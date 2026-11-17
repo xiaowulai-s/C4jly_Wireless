@@ -1,0 +1,1806 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : C4F7N 便携式检漏仪 | STM32F103RCT6 + TJC 7寸屏(C4F7N_HMI_v18+)
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------ */
+#include "main.h"
+#include "spi.h"
+#include "usart.h"
+#include "gpio.h"
+
+/* Private includes ---------------------------------------------------------- */
+/* USER CODE BEGIN Includes */
+#include "adc.h"
+#include "spi.h"
+#include "tjc_cmd.h"
+#include "hmi_callback.h"
+#include "hmi_get.h"
+#include "c4f7n_hmi_protocol.h"
+#include "sensor.h"
+#include "battery.h"
+#include "pump.h"
+#include "w25q16.h"
+#include "history.h"
+#include "param_store.h"
+#include "selftest.h"
+#include <stdio.h>
+#include <string.h>
+
+/* ==== 0x1A/0x1B 收包诊断(PA9/PA10 未引出, 靠屏上显示定位) ==== 
+ * 这个开关与两个函数声明【都必须放在最前面】, 两个独立的坑:
+ *   1) #define 晚于 #if 使用点 => 预处理器顺序扫描, !HMI_DIAG 求值为真(未定义),
+ *      条件编译块被错误地【编译进去】;
+ *   2) 函数声明晚于调用点 => C 要求先声明后使用, 否则隐式声明 int f(),
+ *      到正式声明处报 "conflicting types"。
+ * 定位完成后把 HMI_DIAG 改成 1 即整体编译掉。 */
+#if !HMI_DIAG
+void hmi_diag_any(uint8_t b);
+void hmi_diag_note(uint8_t b);
+void hmi_diag_show(void);
+#endif
+#include "device_id.h"
+#include "stm32f1xx_hal_iwdg.h"    /* 硬件独立看门狗 */
+/* USER CODE END Includes */
+
+/* Private typedef ----------------------------------------------------------- */
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------ */
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro ------------------------------------------------------------- */
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables --------------------------------------------------------- */
+
+/* USER CODE BEGIN PV */
+
+/* ---------- 系统状态 ---------- */
+static float g_ppm  = 0.0f;           /* 当前浓度(ppm) */
+static volatile float g_peak = 0.0f;           /* 峰值: 历史最大值 */
+static volatile float g_min  = 4294967.0f;     /* 谷值: 历史最小浓度; 初值为极大值表示"未记录" */
+static int   g_thr_hi = 500;          /* 高报阈值(ppm) */
+static int   g_thr_lo = 100;          /* 低报阈值(ppm) */
+static int   g_alarm  = 0;            /* 报警等级: 0=正常 1=低报 2=高报 3=超量程 */
+static selftest_t g_selftest;               /* 启动自检结果 (D3), main 中一次填值 */
+static volatile uint8_t g_mute = 0;         /* home-button temp mute current alarm (not persisted) */
+static int g_warm = 0;               /* 初始化标志(上电60s初始化遮罩期内置1) */
+static volatile uint8_t g_page_init = 1;  /* 独立初始化页(页3): 1=显示预热, 跳过后置0 */
+static volatile uint8_t g_skip = 0;       /* 跳过初始化: 初始化页隐藏按钮 printh 07 置位 */
+static uint32_t g_boot_ms = 0;        /* 上电时刻(HAL_GetTick), 用于60s初始化窗口 */
+#define BOOT_INIT_MS   60000u         /* 上电初始化遮罩时长 */
+/* 跳过初始化的开机静默窗口: 挡上电触摸噪声/屏自校准误触 
+ *   页4 上 skip(t98,未锁定) 与 lg_i(t112) 热区重叠于左上角, 两者都挂 printh 07;
+ *   g_skip 置位后不可撤销 -> 一次误触即跳页。上电噪声集中在屏幕点亮最初几秒, 故设此窗口。
+ *   基准用 HAL_GetTick() 自身: g_boot_ms 要到遮罩计时起点才赋值, 不可作开机基准。 */
+#define SKIP_ARM_MS    5000u          /* 开机 5s 内不响应跳过命令 */
+
+/* ---- 标定 / 清空历史 请求标志(ISR 只置位, 主循环执行) ---- 
+ * 标定与恢复出厂含阻塞 flash 擦写(数十~数百 ms)与 HAL_Delay; 而 HAL_Delay 依赖 SysTick,
+ * SysTick 优先级 15 低于 USART3(0), 在中断里调用会永久死锁 -> 一律交主循环执行。 */
+enum { CAL_REQ_NONE = 0, CAL_REQ_ZERO, CAL_REQ_SPAN, CAL_REQ_FAC,
+       CAL_REQ_ZW, CAL_REQ_LO15,    /* ZW=硬件零点(下发厂商指令) LO15=15ppm下限 */
+       CAL_REQ_COUNT };    /* 数组长度: g_restore_* 按操作索引, 需与枚举项数一致 */
+
+/* ==== 临时验证入口(已关闭 DEVTEST_OFF=1) ==== 
+ *  第一步只加了 sensor_send_cmd(), 无人调用 => 编译出来无法验证指令。
+ *  本段上电自动: 打印读数 -> 下发 15ppm 两条指令 -> 再打印读数。
+ *  打印走 USART1(PA9/PA10, 115200, 空闲预留), 用 USB-TTL 接该口即可看到全部输出。
+ * 已关闭(2026-10-12): 该入口上电 3 秒自动下发 15ppm 两条指令, 会污染验证。 */
+#define DEVTEST_OFF 1    /* 已关闭: 该入口上电 3 秒后会自动下发 15ppm 两条指令, 
+ *                                   会污染验证且每次上电重发。改回 0 可复现自动测试。 */
+
+#if !DEVTEST_OFF
+static volatile uint8_t s_devtest = 0;    /* 0=未开始 1=等首帧 2=已发指令1 3=已发指令2 4=完成 */
+static uint32_t s_devtest_t0 = 0;
+static void devtest_ppm(const char *tag)
+{
+  char b[48];
+   /* sensor_read_raw() 返回浮点(如 850.5); +0.5 四舍五入后再取整, 
+   *   避免 14.9 被截成 14 而误判「已截零」 */
+  int r = (int)(sensor_read_raw() + 0.5f);
+  int i = 0;
+  const char *p = tag;
+   /* 调试输出走 USART1(PA9/PA10, 115200, 本就初始化且全程空闲), 
+   *   不用 USART3(屏) 以免混入屏指令流被屏误解析。 */
+  while (*p && i < 20) b[i++] = *p++;
+  b[i++] = (char)((r / 100) + 0x30);
+  b[i++] = (char)(((r / 10) % 10) + 0x30);
+  b[i++] = (char)((r % 10) + 0x30);
+  b[i++] = 0x0D; b[i++] = 0x0A; b[i] = 0;
+  HAL_UART_Transmit(&huart1, (uint8_t *)b, (uint16_t)i, 50);
+}
+#endif
+static volatile uint8_t g_cal_req = CAL_REQ_NONE;    /* 标定请求 */
+static volatile uint8_t g_hist_clear_req = 0;        /* 清空历史请求 */
+static volatile uint8_t g_cal_st_dirty  = 0;        /* 标定状态待上报(主循环消费) */
+
+/* ---- 标定相关参数(集中管理; 标定气浓度见 sensor.h 的 SENSOR_SPAN_PPM) ---- */
+#define CAL_ZERO_MAX_PPM    50         /* 零点标定允许的最大当前浓度 ppm */
+#define CAL_WARM_MS         120000u    /* 标定前最小开机时长(对齐"预热≥2min") */
+#define CAL_SPAN_TOL        0.10f      /* 量程窗口: 给定浓度 ±10% */
+#define CAL_MIN_SPAN_DELTA  50         /* 两点原始读数最小间距 */
+#define CAL_EXPIRE_DAYS     180u       /* 标定有效期(超期屏端变橙) */
+#define CAL_ZERO_CONFIRM_MS  3000u     /* v49 零点两步确认窗口: 第一次点击后需在此窗口内再按一次 */
+#define CAL_ZERO_STABLE_PPM  3.0f      /* v49 窗口内两次读数变化超过此值(ppm) -> 判环境已变, 作废重来 */
+/* 两步确认的归属判定: 必须 armed 且 owner 是本次操作, 否则视为"尚未第一次点击" */
+#define CAL0_ARMED_BY(who)   (g_cal0_armed && (g_cal0_owner == (who)))
+static uint8_t  g_cal0_armed = 0;     /* v49: 1=已第一次点击, 等待窗口内第二次确认 */
+static uint32_t g_cal0_t0    = 0;     /* v49: 第一次点击时刻(HAL_GetTick) */
+static float    g_cal0_ppm0  = 0.0f;  /* v49: 第一次点击时的浓度, 窗口内比对判环境是否变化 */
+/* owner: 当前是哪个操作在等待第二次确认(CAL_REQ_*)。 
+ *   g_cal0_armed 原本是 ZW/ZERO/SPAN/LO15 四者共用的单一标志, 会跨操作串确认
+   (点完零点立刻点 15ppm, 后者会把前者当成自己的第一次确认而直接下发)。 */
+static uint8_t  g_cal0_owner = CAL_REQ_NONE;
+
+/* 标定结果展示后自动把按钮文字恢复为默认"执行"。 
+ * CAL_E_SENT 之后按钮会一直停在"已下发", 用户看不出是否还能再按。
+ * 这里记下是哪个操作发的指令, 延时 CAL_RESULT_HOLD_MS 后调 cal_report(..., CAL_E_IDLE)。 */
+#define CAL_RESULT_HOLD_MS  10000u   /* 6s->10s: 「已下发」需从容核对传感器读数 */
+/* 由单对变量改成按操作索引的数组。 
+ *   v65 用单一 g_restore_btn/g_restore_t0, 只能记住一个待恢复的操作;
+   开机跳过预热后连点五个按钮, 每次 cal_report 都覆写 => 前四个的计时被挤掉,
+   按钮永远停在「预热中」, 只有切走再切回厂家页才复位。
+   现在每个操作独立计时、独立恢复。*/
+static uint8_t  g_restore_btn[CAL_REQ_COUNT];    /* [w]!=NONE => 该操作有挂起的恢复计时 */
+static uint32_t g_restore_t0 [CAL_REQ_COUNT];    /* [w] 该操作何时挂起(HAL_GetTick) */
+#define C_CAL_NORMAL        57149      /* 设置页右栏正常字色(与其余行一致) */
+static char  g_avg_str[16];
+static volatile uint16_t g_tbl_page = 1;       /* 数据表当前页(从1起) */
+/* 测试(开始/停止)状态: 仅测试中才落盘历史并累计本次统计 */
+static volatile uint8_t  g_test = 0;           /* 1=测试中(开始测试→停止测试) */
+static volatile uint32_t g_test_t0 = 0;        /* 本次测试开始时刻(HAL_GetTick) */
+static volatile uint64_t g_sess_sum = 0;      /* 本次测试累计浓度和 */
+static volatile uint32_t g_sess_cnt = 0;      /* 本次测试采样点数 */
+static volatile uint16_t g_sess_max = 0;      /* 本次测试最大值 */
+static volatile uint16_t g_sess_min = 0xFFFF; /* 本次测试最小值 */
+
+/* 历史记录时长 = 记录容量(1点/秒 => 约11天可记录) */
+#define WAVE_PTS        672u
+/* 平均窗口: 滑动平均的宽度(60点, 约1分钟) */
+#define AVG_WIN         60u
+static float    g_avg_run = 0.0f;     /* 滑动平均浓度(首页显示) */
+static float    g_avg_buf[AVG_WIN];   /* 滑动平均环形缓冲 */
+static uint16_t g_avg_i = 0, g_avg_n = 0;
+
+/* 参数存储(标定系数 + 阈值 + 单位), 保存于 W25Q64 */
+param_t g_param;
+#define PP  g_param
+static volatile uint8_t  g_thr_dirty = 0;    /* thresholds changed, save pending */
+static volatile uint32_t g_thr_dirty_t = 0;    /* tick of last threshold change */
+static volatile uint8_t  g_save_pending = 0;   /* thresholds need flash save */
+
+static void hmi_get_response(void);
+
+uint8_t rx_byte;                      /* USART3 屏幕接收单字节缓冲 */
+static volatile uint8_t g_rx_reattach_fail;   /* Receive_IT 重挂失败标志 -> 主循环消费并重试 */
+/* 说明: 这条标志 v53 引入时注释写「主循环会重试并可上报(不静默)」, 但主循环从未读过它 
+ *   => 【注释在说谎】, 且真机含义是: ErrorCallback 里若重挂失败(返回非 HAL_OK),
+ *      屏幕接收就会【第二次永久失联】(与 P0-A 同一失效模式, 只是概率低得多)。
+ *   故 v57 不删标志, 而是补上真正的重试路径(见 app_refresh 开头)。
+ *   判据用「返回值 != HAL_OK」而不是「标志位」, 因为标志位可能被后续成功重挂清掉。 */
+
+/* USER CODE END PV */
+
+/* Private function prototypes ----------------------------------------------- */
+void SystemClock_Config(void);
+/* USER CODE BEGIN PFP */
+static void app_refresh(void);
+static void app_apply_threshold(void);
+static void refill_table(void);
+static void hmi_update_init_countdown(void);
+static void cal_poll(void);
+static void hist_clear_poll(void);
+static void cal_upload_status(void);
+static void epoch_to_ymd(uint32_t e, int *py, int *pmo, int *pd);
+static void hmi_update_selftest(void);
+static void low_batt_poll(void);
+static void param_save_safe(void);
+
+/* USER CODE END PFP */
+
+/* Private user code --------------------------------------------------------- */
+/* USER CODE BEGIN 0 */
+/* ---- 时间同步 RTC 相互校时 (方案A: MCU 读取屏幕时间并回写屏时) ---- */
+/* 校时状态机: 0=秒值活性探测(排除屏端未启动时的设计初值) 1=读取 6 项镜像 2=已完成 */
+static volatile uint8_t  g_sync_st    = 0;      /* 校时阶段 */
+static volatile uint8_t  g_time_sync_idx = 0;   /* 阶段内步序: 探测 0/1, 读取 0..5 */
+static volatile uint8_t  g_rtc_wait = 0;        /* 已发出 get, 等应答 */
+static volatile uint32_t g_sync_deadline = 0;   /* 本步应答超时 tick */
+static volatile uint32_t g_sync_t0 = 0;         /* 阶段计时起点 */
+static volatile uint32_t g_sync_sec0 = 0xFFFFFFFFu;  /* 活性探测首次读到的秒值 */
+static volatile uint32_t g_sync_rtc[6];         /* 缓冲: rY/rM/rD/rH/rMi/rsec 的回读值 */
+static volatile uint32_t g_wall_epoch = 0;      /* 同步得到的 epoch 秒 */
+static volatile uint32_t g_wall_tick  = 0;      /* 同步时刻的 HAL_GetTick() */
+static uint32_t rtc_to_epoch(uint32_t y, uint32_t mo, uint32_t d, uint32_t h, uint32_t mi, uint32_t s);
+static void rtc_time_start_sync(void);
+static void rtc_time_finalize(void);
+static void rtc_time_sync_poll(void);
+uint32_t rtc_wall_seconds(void);
+
+/* ---- 报警配色 (与屏端 dvr 色条一致): 0=正常 1=低报 2=高报 3=超量程 ---- 
+ * 必须在此处定义: app_refresh() 早于文件后段的阈值段使用它 */
+static const uint32_t CONC_COLOR[4] = { C_CONC_IDLE, C_STRIP_ORANGE, C_STRIP_RED, C_STRIP_RED };    /* 浓度大字配色表(索引=g_alarm); 首档=屏端原色, 正常态不改色 */
+
+/* ---- L1 串口减量(2026-09-24): 镜像脏标记, 仅变化才发; 进页全量补发 ---- 
+ * 背景: app_refresh 每轮阻塞发约 567B(9600bps 约0.59s), refill_table 每2s 再发 1749B,
+ * 主循环被阻塞式发送卡到 0.84~2.66s, 触摸响应延迟 0.4~1.3s。
+ * 本组标志让周期刷新降为"变化才发", 稳态 TX 线路占用从 ~330% 降到 <10%。 */
+static volatile uint8_t g_page_now   = 0xFFu;  /* 固件视角当前页(0x40+p): 0=主页 1=设置 2=历史; 0xFF=未知(上电初始化页无进页事件, 由 g_page_init 判断) */
+static volatile uint8_t g_full_dirty = 1;      /* 上电/进页置1: 下一轮 app_refresh 全量补发镜像(切页重建后屏端控件回默认值) */
+static volatile uint8_t g_refill_req = 0;      /* 进历史页/翻页补发表格(主循环执行, 回调内不再阻塞发送) */
+
+/* ---- 进页补发屏障: 等屏端把页面对象建完再发镜像 ----
+ * 屏端收到 printh 4x 时正在重建整页对象, 此时收到的 "pc0d_s2.pic=1" 这类指令
+ * 不会报错也不丢, 但被排队到页面建完之后才执行 => 肉眼先见页面默认值, 过会才变真值。
+ * 该延迟在屏端内部, 固件侧改发送顺序/速度无效。屏障的价值是让默认值根本不出现。
+ * 保留的原因: 电量文字/设备信息/阈值/标定状态/低电提示/预热倒计时仍是直写控件,
+ * 会撞进重建窗口被排队。若真机仍见这些元素闪, 往上调此值即可。
+ *
+ * [v77] 60u -> 200u: 屏端 v11 给主页/设置/历史/厂家四页加了【页面转场动画】
+ *   (页对象 effect 属性, time=150ms), 切页不再是瞬时替换, 而是在 150ms 内渐进切换,
+ *   页面对象【建好】的时点被推后。60u 屏障按「瞬时切页」定, 补发会撞进动画窗口
+ *   被屏端排队 -> 到执行时对象已被转场重建覆盖 => 真机症状「切页后不更新页面内容」。
+ *   200u > 最大转场 150ms, 留 50us 余量(动画结束到补发之间还有串口发送耗时)。
+ *   代价: 每次切页内容晚约 140ms 出现, 肉眼几乎不可见。
+ *   ★ 判据: 此值必须【大于屏端最大转场 time】。屏端调大动画时, 此处要同步调大。
+ *   (转场 time 实测命令: tjc-hmi-toolkit/_probe_effect.js <HMI> 可列全部页 effect/time) */
+#define HMI_PAGE_SETTLE_MS   60u
+static volatile uint32_t g_page_t     = 0;    /* 最近一次进页时刻 */
+static volatile uint8_t  g_page_wait  = 0;    /* 1=需等待屏端建页完成 */
+static volatile uint8_t  g_page_entry = 0;    /* 1=刚放行, 本轮需额外直写当前页控件一次 */
+
+/* 供主循环里位于 app_refresh 之前的发送点(low_batt_poll 等)做同一个门控。
+ * 返回 1 = 屏端仍在重建本页, 本轮不应发任何镜像。
+ * 到点放行时顺带置 g_page_entry: 屏端各页 load 事件只在进页那一瞬执行一次,
+ * 变量若在那之后才补发进去(冷启动吞指令/boot_resend/屏障延后), 屏端永远读不到真值
+ * 且 L1 门控不重试 => 初始化页三圆点一直灰、厂家页色条不变色。
+ * 故放行后第一轮额外直写一次当前页控件兜底。*/
+static uint8_t hmi_page_settling(void) {
+  if (!g_page_wait) return 0;
+  if ((HAL_GetTick() - g_page_t) < HMI_PAGE_SETTLE_MS) return 1;
+  g_page_wait  = 0;       /* 到点: 放行, 由 app_refresh 本轮做全量补发 */
+  g_page_entry = 1;       /* 本轮额外直写一次, 不依赖屏端 load 是否已读 */
+  return 0;
+}
+
+/* ---- 高报阈值键盘回读 (屏发 0x11 -> MCU tjc_get h.val -> 采纳) ---- 
+ * ISR 只置 g_thr_hi_req; 实际 tjc_get 在主循环发起(避免 ISR 内阻塞发串口) */
+static volatile uint8_t  g_thr_hi_req = 0;       /* ISR 置位: 有键盘输入待回读 */
+static volatile uint8_t  g_thr_push   = 0;       /* ISR 置位: 进设置页请主循环下发阈值 */
+static volatile uint8_t g_thr_wait   = 0;       /* 已发出 get, 等应答 */
+/* get 应答通道的单一所有权: tjc_get 的回包不带"我是在回哪个请求"的身份, 
+   阈值回读与 RTC 校时都靠 hmi_get_response() 的优先级猜 -> 可能把 RTC 读数(如 rY=2026)
+   当成高报阈值采纳并落盘。现改为互斥: 任一方等应答期间, 另一方不得发 get。 */
+static volatile uint8_t g_get_busy   = 0;       /* 1=get 通道已被占用(阈值优先) */
+static volatile uint8_t  g_thr_try    = 0;       /* 重试计数(诊断用, 不再作为放弃判据) */
+static volatile uint32_t g_thr_t0 = 0;       /* 用户按键时刻: 用「耐心时间」而非「重试次数」判定放弃 */
+/* 阈值回读的放弃判据: 按墙钟耐心时间, 而非重试次数。
+ * 让出(g_rtc_wait)发生在 g_thr_try++ 之前, 不消耗重试预算 —— 真正吃掉次数的是 500ms 应答超时;
+ * 而上电阶段屏正在重建页面(refill_table 可阻塞), 500ms 窗口必然不够
+ * => 上电后几秒内按阈值会全超时, 用户按键被静默丢弃。
+ * 残留风险已核对: 放弃边界上迟到的回包会被 RTC 分支消费, 阈值范围 100~1500 与年份 2020~2099
+ * 不重叠 => 被 y>=2020 校验拒绝后 RTC 自动重试, 自愈。 */
+#define THR_HI_PATIENCE_MS 8000u    /* 阈值回读的等待上限(墙钟) */
+static volatile uint32_t g_thr_deadline = 0;     /* 应答超时 tick */
+static void thr_apply_hi_val(uint32_t v);
+static void thr_hi_readback_poll(void);
+static void hmi_push_device_info(void);    /* 设置页设备信息行(fw/sn)按需下发 */
+
+/* ---------- IWDG 前置声明 ---------- */
+static void iwdg_enable(void);  static void iwdg_feed(void);
+
+/* ---------- 硬件独立看门狗(IWDG) ---------- 
+ * 动机: 原「看门狗」是软件模拟(仅主循环喂狗), 一旦 HardFault / Error_Handler 死循环,
+ *   主循环停 -> 软件喂狗永不执行 -> NVIC_SystemReset() 永不触发 -> 设备永久死机。
+ *   IWDG 由独立 LSI 驱动、不依赖 CPU, 是这类死锁场景下唯一的自愈手段。
+ * 参数: LSI≈40kHz(typ)/30~60kHz 范围, 取 /32 分频 + 计数 4000 => 约 3.2 s。
+ *   上限受 LSI 精度影响(最坏 60kHz -> 约 2.1 s, 最慢 30kHz -> 约 4.3 s),
+ *   故窗口留足余量: 主循环正常节拍 250 ms, 阻塞操作最长约 0.5 s(flash 擦除/表格刷新),
+ *   3~4 s 窗口不会误触发。 */
+#define IWDG_PRESCALER   32u /* LSI/32 */
+#define IWDG_RELOAD      4000u      /* ≈3.2 s @40kHz */
+static IWDG_HandleTypeDef hiwdg;
+static void iwdg_hw_start(void);
+
+/* ---- 屏幕回读处理: 收到 get 应答或 printh 单字节 ---- */
+/* 说明: 每收到 1 字节, 先喂给 hmi_get_feed 判断是否为 get 应答帧(0x70/0x71 帧头), 
+ *   帧完成则按应答帧处理(回读值/状态); 非帧字节才转 hmi_on_rx_byte 分发;
+ *   帧中间的字节必须丢弃(否则数值字节会撞业务命令码) */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+  if (huart != NULL && huart->Instance != USART3) return;    /* 非串口屏串口忽略 */
+  {
+#if !HMI_DIAG
+    hmi_diag_any(rx_byte);    /* 总字节数; 0x1A/0x1B 计数由 hmi_on_rx_byte 内统一统计 */
+#endif
+    int gr = hmi_get_feed(rx_byte);    /* 1=帧完成, 0=非帧字节, -1=帧中间字节 */
+    if (gr > 0) {
+       /* 一帧 get 应答处理, 分派到对应(回读值/标定值/状态等) */
+      hmi_get_response();
+    } else if (gr == 0) {
+       /* 与任何帧无关的字节: 普通单字节命令, 分发到命令分发器 */
+      hmi_on_rx_byte(rx_byte);
+    }
+     /* gr < 0: 帧中间字节, 必须丢弃 —— 否则 get 应答的数值字节(如秒值 7) 
+       会被当业务命令执行(0x07 跳过初始化 -> 一开机就跳页)。 */
+  }
+   /* 每次回调后重新使能接收单字节中断 */
+  (void)HAL_UART_Receive_IT(huart, &rx_byte, 1);    /* 返回值不再丢弃: 见 g_rx_reattach_fail */
+}
+
+/* USART3 错误回调 —— 修复「一次 ORE 即屏幕永久失联且不自愈」 
+ *
+ * 背景: 本工程用单字节 HAL_UART_Receive_IT 接收屏命令, 且**从未实现本回调**。
+ *   单字节接收下, 只要屏端 UART 因电磁干扰 / 屏重启脏数据 / 热插拔收到一个噪声字节,
+ *   第二个字节在处理第一个的窗口内到达 => ORE(Overrun)。STM32 HAL 把 ORE 归为
+ *   blocking error: 调 UART_EndRxTransfer() 清掉 CR1.RXNEIE 且 RxState 置READY。
+ *   而错误分支**只调本回调** => RxCpltCallback 永不触发 => Receive_IT 永不重挂
+ *   => 屏幕接收永久失效(触摸无响应)且无法自愈, 现场表现为「屏突然失灵, 重启才好」。
+ *
+ * 修法: 清 ORE(必须先读 SR 再读 DR 才能真正清) + 重挂接收 + 复位 get 帧状态机。
+ */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+  if (huart == NULL || huart->Instance != USART3) return;    /* 只处理屏幕串口 */
+  __HAL_UART_CLEAR_OREFLAG(huart);           /* 清 ORE: 读 SR 后读 DR, 由宏完成 */
+  hmi_get_reset();                 /* 丢掉可能残留的半帧, 避免下次被当业务命令 */
+  if (HAL_UART_Receive_IT(huart, &rx_byte, 1) != HAL_OK) {
+    g_rx_reattach_fail = 1;         /* 置位: app_refresh 每轮会重试直到成功(见该处) */
+  }
+}
+
+/* 处理一帧屏幕的 get 应答: 判断是 RTC 同步还是阈值回读值 */
+void hmi_get_response(void) {
+  uint32_t v = hmi_get_value();
+
+   /* 阈值键盘回读应答(0x11): 采纳并落盘。用 g_get_busy 而非 g_thr_wait 判定, 
+     因为 g_thr_wait 只表示"阈值已发出 get", 而 g_get_busy 才是"通道归属阈值"。 */
+  if (g_get_busy) {
+    g_get_busy = 0; g_thr_wait = 0; g_thr_hi_req = 0; g_thr_try = 0;
+    thr_apply_hi_val(v);
+    return;
+  }
+
+  if (g_sync_st >= 2u || !g_rtc_wait) return;    /* 非本次校时的回包, 忽略 */
+
+  if (g_sync_st == 0u) {                         /* 活性探测: 秒值必须变化, 否则屏端镜像尚未刷新 */
+    g_rtc_wait = 0;
+    if (g_time_sync_idx == 0u) { g_sync_sec0 = v; g_time_sync_idx = 1u; g_sync_t0 = HAL_GetTick(); }
+    else if (v != g_sync_sec0) { g_sync_st = 1u; g_time_sync_idx = 0; }   /* 秒值已走 -> 镜像有效 */
+    else { g_sync_sec0 = v; g_sync_t0 = HAL_GetTick(); }                  /* 未变化 -> 再探一轮 */
+    return;
+  }
+
+  g_sync_rtc[g_time_sync_idx] = v;               /* st==1: 依次收 rY/rM/rD/rH/rMi/rsec */
+  g_rtc_wait = 0;
+  if (++g_time_sync_idx >= 6u) {                 /* 6 项取齐: 校验合理性后换算 epoch */
+    uint32_t y = g_sync_rtc[0], mo = g_sync_rtc[1], d = g_sync_rtc[2];
+    if (y >= 2020u && y <= 2099u && mo >= 1u && mo <= 12u && d >= 1u && d <= 31u) {
+      g_wall_epoch = rtc_to_epoch(y, mo, d, g_sync_rtc[3], g_sync_rtc[4], g_sync_rtc[5]);
+      g_wall_tick  = HAL_GetTick();
+      g_sync_st = 2u;                            /* 校时完成, 不再打扰屏 */
+    } else {
+      g_sync_st = 1u; g_time_sync_idx = 0;       /* 数值不合理 -> 重读 */
+    }
+  }
+}
+
+
+/* 将当前存储的高报阈值下发到屏幕 h, 保证屏幕与固件一致 
+ * 注: 低报阈值已在 2026-09-22 决策中取消屏端调节(l/thv 控件与 0x04/0x05 一并删除),
+ *     故此处不再下发 l。改为"仅条件下发"后, 屏上 h 的值不再每 250ms 被刷新。 */
+static void app_apply_threshold(void) {
+  g_thr_hi = PP.thr_hi; g_thr_lo = PP.thr_lo;
+  tjc_set_val(OBJ_THR_HI_VAL, g_thr_hi);
+   /* 同步写屏端全局变量 thr: 设置页 load/tm0 用它刷新 h.val。 
+   * 原因: TJC 进页按"页面里存的初值"绘制, 而 h 的页面初值是 500;
+   * 只推对象 h 无法覆盖这次绘制, 必须由页面自己从 thr 刷新。 */
+  tjc_set_var(SCREEN_VAR_THR, g_thr_hi);
+}
+
+/* ---------- 看门狗: 约4s未喂狗则强制复位 ---------- */
+static uint32_t g_iwdg_t = 0;
+static uint8_t  g_iwdg_on = 0;
+static void iwdg_enable(void) { g_iwdg_on = 1; g_iwdg_t = HAL_GetTick(); }
+static void iwdg_feed(void) {
+  if (g_iwdg_on && (HAL_GetTick() - g_iwdg_t) > 4000u) NVIC_SystemReset();   /* 超时未喂狗 -> 复位 */
+  g_iwdg_t = HAL_GetTick();
+  HAL_IWDG_Refresh(&hiwdg);    /* 同时喂硬件看门狗(硬件喂狗无条件执行, 与 g_iwdg_on 无关) */
+}
+
+/* 启动硬件 IWDG: 使能 LSI -> 配 PRESC/RELOAD -> 启动。 
+ * 一旦启动即不可关闭(寄存器写保护), 只能等复位 —— 故放在上电初始化末尾。 */
+static void iwdg_hw_start(void) {
+  RCC_OscInitTypeDef osc = {0};
+  osc.OscillatorType = RCC_OSCILLATORTYPE_LSI;    /* LSI 由 RCC 统一使能(HAL 内部会等就绪) */
+  osc.LSIState     = RCC_LSI_ON;
+  osc.PLL.PLLState = RCC_PLL_NONE;                 /* 必需: 关 PLL 省电, 避免 LSI 启用时被等待 */
+  (void)HAL_RCC_OscConfig(&osc);
+  hiwdg.Instance = IWDG;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER;
+  hiwdg.Init.Reload    = IWDG_RELOAD;
+  (void)HAL_IWDG_Init(&hiwdg);    /* 初值约 3.2 s */
+}
+
+/* ---------- 由 RTC 时间换算为 epoch ---------- */
+uint32_t rtc_wall_seconds(void) {
+  return g_wall_epoch + (uint32_t)((HAL_GetTick() - g_wall_tick) / 1000u);   /* 基准+已过秒数 */
+}
+/* 由 年/月/日/时/分/秒 转换为纪元秒 */
+static uint32_t rtc_to_epoch(uint32_t y, uint32_t mo, uint32_t d, uint32_t h, uint32_t mi, uint32_t s) {
+  int yy = (int)y, mm = (int)mo;
+  yy -= (mm <= 2);
+  int era = (yy >= 0 ? yy : yy - 399) / 400;
+  unsigned yoe = (unsigned)(yy - era * 400);
+  unsigned month = (unsigned)(mm + (mm > 2 ? -3 : 9));
+  unsigned doy = (153u * month + 2u) / 5u + (unsigned)d - 1u;
+  unsigned doe = yoe * 365u + yoe / 4u - yoe / 100u + doy;
+  uint32_t days = (uint32_t)(era * 146097) + doe - 719468u;
+  return days * 86400u + h * 3600u + mi * 60u + s;
+}
+/* 启动时间同步: 进入秒值活性探测阶段 */
+static void rtc_time_start_sync(void) {
+  g_sync_st = 0; g_time_sync_idx = 0; g_rtc_wait = 0; g_sync_sec0 = 0xFFFFFFFFu;
+  g_sync_t0 = HAL_GetTick();
+}
+static void rtc_time_finalize(void) {
+  g_sync_st = 2;    /* (预留) 结束本次校时 */
+}
+/* 屏端真实时间镜像组件(0~5 = 年月日时分秒), 取【初始化页(页3)】上的那套: 
+ *   开机即停在页4, 其 tm0_i(tim=300) 在跑并绑定 rsec_i.val=rtc5;
+ *   而主页(4.pa)上的同名 tm0/rY/rsec 在页4 期间不运行, 秒值不走 ->
+ *   活性探测(v != g_sync_sec0)永不成立 -> 校时卡死 -> 时间戳退化为 1970。 */
+static const char *const RTC_MIRROR[6] = { "rY_i","rM_i","rD_i","rH_i","rMi_i","rsec_i" };
+/* 轮询驱动校时(每 250ms 调一次): 失败不放弃, 屏端就绪/镜像刷新后自动完成 */
+static void rtc_time_sync_poll(void) {
+  uint32_t now = HAL_GetTick();
+  if (g_sync_st >= 2u) return;                                           /* 已完成 */
+  if (g_sync_st == 0u && g_time_sync_idx >= 1u) {                        /* 活性探测: 首读后等 1.2s 再复读秒值 */
+    if ((uint32_t)(now - g_sync_t0) < 1200u) return;
+  }
+  if (g_rtc_wait) {                                                      /* 等本步应答 */
+    if (now > g_sync_deadline) { g_rtc_wait = 0; g_time_sync_idx = 0; }  /* 无应答: 本阶段重来 */
+    return;
+  }
+  if (g_get_busy) return;    /* 阈值回读占用通道 -> 本轮不发, 下轮再试(校时会自动重试, 不会丢) */
+  g_rtc_wait = 1; g_sync_deadline = now + 500u;                          /* 单步应答窗口 500ms */
+  tjc_get((g_sync_st == 0u) ? "rsec_i" : RTC_MIRROR[g_time_sync_idx], "val");
+}
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+
+   /* USER CODE BEGIN 1 */
+
+   /* USER CODE END 1 */
+
+   /* MCU Configuration-------------------------------------------------------- */
+
+   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+   /* USER CODE BEGIN Init */
+
+   /* USER CODE END Init */
+
+   /* Configure the system clock */
+  SystemClock_Config();
+
+   /* USER CODE BEGIN SysInit */
+
+   /* USER CODE END SysInit */
+
+   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_USART1_UART_Init();
+  MX_USART3_UART_Init();    /* serial screen USART3 */
+  MX_SPI1_Init();
+  MX_ADC1_Init();    /* battery: ADC1 IN9/PB1 (hadc1) */
+
+   /* USER CODE BEGIN 2 */
+   /* ---- 外设初始化 ---- */
+   /* 传感器: 通过 UART4 读取浓度的文本 */
+  sensor_init();
+#if !DEVTEST_OFF
+  s_devtest_t0 = HAL_GetTick();
+#endif
+
+   /* 电池: ADC1(IN9/PB1)电压采样, 循环采样 */
+  battery_init();
+  battery_poll();
+   /* 泵: 初始化默认停止 */
+  pump_init();
+
+   /* 存储: 历史记录 + 参数存储(标定/阈值) */
+  w25q16_init();
+  param_init(&PP);
+  history_init();
+  device_id_init();    /* 设备唯一编号: 首次上电由 MCU UID 派生并落盘(见 BSP/Src/device_id.c) */
+   /* 从 flash 恢复阈值等参数到内存, 并应用 */
+  g_thr_hi = PP.thr_hi;
+  g_thr_lo = PP.thr_lo;
+  sensor_set_cal(PP.cal_k, PP.cal_b);
+
+   /* 启动自检 (D3): 外设只读检测, 结果用于状态圆点置灰 */
+  selftest_run(&g_selftest);
+
+   /* 使能串口屏接收中断, 收到字节交回调处理/应答 */
+  HAL_UART_Receive_IT(&huart3, &rx_byte, 1);
+
+   /* 切到独立初始化页(页3), 预热完成或跳过后再进主页(页0) */
+  tjc_page(3);
+   /* 屏冷启动需1~3s, 上电首发指令可能被吞: 延时后补发两次兜底(页4重入无副作用) */
+  HAL_Delay(1500);
+  tjc_page(3);
+  HAL_Delay(1000);
+  tjc_page(3);
+  app_apply_threshold();
+  rtc_time_start_sync();
+
+   /* 上电进初始化页也必须置进页屏障(补上, 此前遗漏)。
+   * 直写兜底只在 hmi_page_settling() 由 1 变 0 时触发(靠 g_page_entry),
+   * 而 g_page_wait 只有 hmi_on_page_enter() 与"初始化页->主页"两处置 1。
+   * 上电这三次 tjc_page(3) 是固件主动切页, 从未置过屏障 => g_page_entry 永远为 0,
+   * 初始化页永远拿不到那次直写; 而屏端 load 早已跑完(只跑一次)读到变量初值 0
+   * => 三个圆点一直停在灰色。
+   * 注意 boot_resend 只保证"变量会被补发", 管不了"load 已跑完" —— 两个不同层面。
+   * 此处屏端已就绪(前面已延时 2.5s), 直写不会撞进重建窗口。*/
+  g_page_t    = HAL_GetTick();
+  g_page_wait = 1;
+
+   /* 上电初始化遮罩计时起点 */
+  g_boot_ms = HAL_GetTick();
+
+   /* 先启动硬件 IWDG: 必须在上电一次性配置, 且放在 HAL_Delay(1500/1000) 之后, 
+   *   否则串口冷启动等待期间若发生死锁, 硬件狗还没启动(见变更记录说明)。 */
+  iwdg_hw_start();
+   /* 使能软件看门狗, 由循环定时喂狗 */
+  iwdg_enable();
+  iwdg_feed();
+
+   /* USER CODE END 2 */
+
+   /* Infinite loop */
+   /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+     /* USER CODE END WHILE */
+
+     /* USER CODE BEGIN 3 */
+#if !DEVTEST_OFF
+     /* 临时: 上电自动验证厂商指令(验证完把 DEVTEST_OFF 改 1) */
+    if (s_devtest < 4u) {
+      uint32_t el = HAL_GetTick() - s_devtest_t0;
+      if (s_devtest == 0u)      { if (el > 3000u) { s_devtest = 1u; s_devtest_t0 = HAL_GetTick(); } }
+      else if (s_devtest == 1u) { devtest_ppm("[P1]"); sensor_send_cmd(SENSOR_CMD_LO15_A, SENSOR_CMD_LO15_LEN); s_devtest = 2u; s_devtest_t0 = HAL_GetTick(); }
+      else if (s_devtest == 2u) { if (el > 500u) { devtest_ppm("[P2]"); s_devtest = 3u; s_devtest_t0 = HAL_GetTick(); } }
+      else if (s_devtest == 3u) { if (el > 500u) { sensor_send_cmd(SENSOR_CMD_LO15_B, SENSOR_CMD_LO15_LEN); s_devtest = 4u; s_devtest_t0 = HAL_GetTick(); devtest_ppm("[P3]"); } }
+    }
+#endif
+    iwdg_feed();
+    if (g_thr_dirty || g_thr_push) { g_thr_dirty = 0; g_thr_push = 0; app_apply_threshold(); }
+    if (g_save_pending && (HAL_GetTick() - g_thr_dirty_t) >= 200u) { g_save_pending = 0; param_save_safe(); }
+     /* 进页屏障: 屏端正在重建本页对象时, 下面这些"进页即全量补发"的发送点 
+     * 都不能发, 否则指令被屏端排队 -> 表现为"先显示页面默认值, 过会才跳成真实值"。
+     * 这些点都读 g_full_dirty 做 full 判定, 而屏障期间该标志仍为 1, 正好被这里拦住。
+     * 到点后 hmi_page_settling() 自行清标志, 本轮照常全量补发, 不丢任何一次。*/
+    if (!hmi_page_settling()) {
+      cal_poll();
+#if !HMI_DIAG
+      { static uint32_t s_dg_t = 0;
+        if ((HAL_GetTick() - s_dg_t) >= 1000u) { s_dg_t = HAL_GetTick(); hmi_diag_show(); } }
+#endif                         /* 标定/恢复出厂请求(主循环执行, 避免中断内阻塞) */
+      hist_clear_poll();              /* 清空历史请求 */
+      hmi_update_init_countdown();    /* 预热倒计时: 先于 app_refresh 发, 避免被其后大量刷新挤后 */
+      hmi_update_selftest();          /* POST 结果行(pst_i): 仅初始化页/仅失败时发 (T-15) */
+      low_batt_poll();                /* 低电三级提示(lb+音效): 按页下发 lb/lb_s1/lb_s2/lb_i, 4 页均需有对应对象 (T-09) */
+    }
+    app_refresh();
+    HAL_Delay(250);
+  }
+   /* USER CODE END 3 */
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+   /* * Initializes the RCC Oscillators according to the specified parameters 
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+   /* * Initializes the CPU, AHB and APB buses clocks 
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/* USER CODE BEGIN 4 */
+
+
+/* ---------- app_refresh: 周期刷新 ---------- */
+/* 顶栏状态下发: 固件只写屏端全局变量, 由各页 load 事件读变量刷自己的控件
+ * (照搬 thr 模式, 见协议头 SCREEN_VAR_THR)。变量赋值不依赖控件是否已建好,
+ * 而 load 在页面建完之后执行 => 竞态从根上不存在, 切页不再闪默认值。
+ * 另有一层兜底: 进页那一轮额外直写控件一次(见下方 direct 分支) —— load 只跑一次,
+ * 变量若晚于 load 补发进去, 屏端就永远读不到真值。
+ *
+ * 变量契约(屏端 Program.s 声明 vp0~vp4, 每个变量只承载一种语义):
+ *   vp0 = 探头 1/0         -> 屏端 if 刷 pc0d*.pic 与 pc0*.txt
+ *   vp1 = 泵   1/0         -> 屏端 if 刷 pc1d*.pic 与 pc1*.txt
+ *   vp2 = 电量圆点图片ID   -> 屏端 pc2d*.pic=vp2
+ *   vp3 = 顶栏色条背景色   -> 屏端 dvr*.bco=vp3
+ *   vp4 = 电量百分比 0~100 -> 屏端 cov vp4,pc2*.txt,0 出电量文字
+ * 切勿拿 vp2 去 cov 出文字: vp2 是图片ID(5/3/6), cov 出来是无意义数字。
+ */
+static void hmi_update_status_chips(uint8_t full) {
+  static uint8_t s_dot = 0xFFu, s_pump = 0xFFu, s_bat = 0xFFu;   /* 镜像缓存(0xFF=未发过) */
+  static uint32_t s_strip = 0xFFFFFFFFu;    /* 顶栏报警色条档位缓存 */
+  static int      s_pct  = -1;             /* 电量百分比缓存 */
+  /* 色条上一轮下发值: 独立于 s_strip(后者是"变量要不要写"的缓存),
+   * 而色条必须每次报警等级变化都直写控件 —— 稳态无 load 可依赖。*/
+  static uint32_t s_strip_prev = 0xFFFFFFFFu;    /* 0xFFFFFFFF=从未下发, 强制首轮发 */
+  /* 三个圆点上一轮【直写控件】的值: 与上面的 s_dot/s_pump/s_bat(变量缓存)分开,
+   * 因为圆点也必须「值一变就直写」, 不能只靠进页那一轮 —— 同色条 s_strip_prev 之理。
+   * 0xFF = 从未直写, 强制首轮发。*/
+  static uint8_t s_dot_prev = 0xFFu, s_pump_prev = 0xFFu, s_bat_prev = 0xFFu;
+  int probe = sensor_online();
+  int pct   = battery_get_pct();
+  int st_ok = g_selftest.flash_ok;    /* 探头可用的前置外设自检 */
+  uint8_t dot  = (probe && st_ok) ? 1u : 0u;
+  uint8_t pump = pump_get() ? 1u : 0u;
+  uint8_t bpic = (pct >= BAT_DOT_WARN_PCT) ? (uint8_t)PIC_DOT_GREEN
+               : (pct >= BAT_DOT_LOW_PCT)  ? (uint8_t)PIC_DOT_AMBER : (uint8_t)PIC_DOT_RED;
+   /* 顶栏报警色条档位(屏端 load 事件负责上色, 这里只把档位写进变量) */
+  uint32_t stc = (g_alarm >= 2) ? (uint32_t)C_STRIP_RED
+               : (g_alarm == 1) ? (uint32_t)C_STRIP_ORANGE : (uint32_t)C_STRIP_IDLE;    /* 顶栏色带: 正常态保持屏端原色 */
+  /* 上电补偿窗口: 屏冷启动需 1~3s, 固件上电首轮发的变量指令会被屏端吞掉,
+   * 而 L1 门控此时已把变量记成"已发送" => 屏端 load 永远读到初值 0
+   * => 初始化页三个圆点一直停在灰色。故前 3 秒内无条件重发变量。*/
+  int boot_resend = ((HAL_GetTick() - g_boot_ms) < 3000u);
+  /* 进页放行后的第一轮: 除写变量外额外直写控件一次。屏端 load 只在进页跑一次,
+   * 变量若晚于 load 补发进去就永远读不到真值, 且 L1 门控不重试 => 状态永久卡住。
+   * 此刻屏障已等过、对象已建好, 直写不会撞进重建窗口, 故不引入闪烁。*/
+  int direct = g_page_entry;
+  g_page_entry = 0;
+  if (!boot_resend && !direct && !g_full_dirty && !full
+      && dot == s_dot && pump == s_pump && bpic == s_bat && stc == s_strip && pct == s_pct) return;
+  s_dot = dot; s_pump = pump; s_bat = bpic; s_strip = stc; s_pct = pct;
+  /* 写 5 个变量(供屏端各页 load 自刷) */
+  tjc_set_var(SCREEN_VAR_PROBE, dot  ? 1 : 0);
+  tjc_set_var(SCREEN_VAR_PUMP,  pump ? 1 : 0);
+  tjc_set_var(SCREEN_VAR_BPIC,  bpic);
+  tjc_set_var(SCREEN_VAR_STRIP, (int)stc);
+  tjc_set_var(SCREEN_VAR_BPCT,  pct);    /* 屏端 cov 用它出电量数字 */
+  /* 进页这一轮额外直写控件: 不依赖屏端 load 是否已读过。
+   * 电量【文字】故意不在此直写: 屏端 cov vp4 只出裸数字, 与完整文案「电量 N%」
+   * 冲突 -> 会先闪 0 / 裸数字再被 tjc_set_bat 覆盖。文字由 tjc_set_bat 独家负责。*/
+  /* 不按 g_page_now 选名, 5 页全推 —— 屏端出页可能不发通知
+   * (厂家页返回键只 page 2 不 printh 4x), g_page_now 会停在 5,
+   * 按页选名就会把值推到用户早已离开的页上。*/
+  static const char *const sfx_all[5] = { "", "_s1", "_s2", "_i", "_f" };
+  char n[12];
+  unsigned k;
+  /* 三个圆点: 任一值变化就直写 5 页全部副本, 不受 direct 门控 ——
+   * 与色条同理: 屏端 load 只在进页跑一次, 只写变量的话, 屏上永远是进页那一刻的值。
+   * 真机症状: 初始化页电量 31% 显示红点, 主页显示橙点(31% 应为琥珀色)。*/
+  if (direct || dot != s_dot_prev || pump != s_pump_prev || bpic != s_bat_prev) {
+    s_dot_prev = dot; s_pump_prev = pump; s_bat_prev = bpic;
+    for (k = 0; k < 5; k++) {
+      snprintf(n, sizeof(n), "pc0d%s", sfx_all[k]); tjc_pic(n, dot ? PIC_DOT_GREEN : PIC_DOT_GRAY);
+      snprintf(n, sizeof(n), "pc1d%s", sfx_all[k]); tjc_pic(n, pump ? PIC_DOT_GREEN : PIC_DOT_GRAY);
+      snprintf(n, sizeof(n), "pc2d%s", sfx_all[k]); tjc_pic(n, bpic);
+    }
+  }
+  if (direct) {
+    for (k = 0; k < 5; k++) {
+      snprintf(n, sizeof(n), "pc0%s",  sfx_all[k]);
+      tjc_set_txt(n, probe ? "\xCC\xBD\xCD\xB7 \xD2\xD1\xC1\xAC\xBD\xD3" : "\xCC\xBD\xCD\xB7 \xCE\xB4\xC1\xAC\xBD\xD3");
+      snprintf(n, sizeof(n), "pc1%s",  sfx_all[k]);
+      tjc_set_txt(n, pump ? "\xB1\xC3 \xD2\xD1\xC6\xF4\xB6\xAF" : "\xB1\xC3 \xCE\xB4\xC6\xF4\xB6\xAF");
+    }
+  }
+  /* 色条单独处理: 每次报警等级变化都要直写 4 个 dvr, 不放在上面的 direct 门控内。
+   * 色条与圆点性质不同: 它是会反复升/降的连续量, 而 load 只跑一次,
+   * 只靠进页那一次 => 稳态报警变化只写了变量没人读, 色条永远停在进页时的颜色
+   * (表现为"报警不变色"与"解除后主页不恢复")。
+   * 解除时必须显式写回 C_STRIP_IDLE, 否则残留红色。*/
+  if (direct || stc != s_strip_prev) {
+    s_strip_prev = stc;
+    /* 厂家页色条对象名无 _f 后缀(实测屏包) */
+    tjc_set_bco("dvr",    stc);    /* 主页 + 厂家页(同名 dvr) */
+    tjc_set_bco("dvr_s1", stc);
+    tjc_set_bco("dvr_s2", stc);
+    tjc_set_bco("dvr_i",  stc);
+  }
+}
+
+/* 预热倒计时: 独立高频驱动(初始化页 pt0_i), 文案 "剩余 N 秒" 
+ *   从 hmi_update_status_chips 抽出: 后者搭 app_refresh 的车, 而 app_refresh 每轮
+ *   阻塞发 567B(9600bps 约 0.59s), 每 2s 的 refill_table 更要多发 1749B(约 1.82s),
+ *   把轮次撑到 2.66s -> 倒计时看着像"每 3 秒跳一次"。改为主循环每轮紧邻调用,
+ *   且仅在初始化页工作, 让秒值变化能第一时间发出。
+ *   用无符号差算 elapsed: 天然抗 HAL_GetTick 回绕, 且先夹紧再换算, 避免下溢。 */
+static void hmi_update_init_countdown(void) {
+  static int last_left = -1;
+  uint32_t el;
+  int left;
+  char cb[24];
+  if (!g_page_init) { last_left = -1; return; }    /* 非初始化页: 复位, 便于下次上电重发 */
+  el = HAL_GetTick() - g_boot_ms;
+  left = (el >= BOOT_INIT_MS) ? 0 : (int)((BOOT_INIT_MS - el) / 1000u);
+  if (left == last_left) return;                   /* 仅整秒变化时下发, 省串口带宽 */
+  last_left = left;
+  snprintf(cb, sizeof(cb), "\xCA\xA3\xD3\xE0 %d \xC3\xEB", left);
+  tjc_set_txt(OBJ_INIT_CNT, cb);
+}
+
+/* 参数保存安全包装 (T-15/D3): Flash 自检失败时静默跳过, 防止向故障器件反复写入 */
+static void param_save_safe(void) {
+  if (!g_selftest.flash_ok) return;
+  param_save(&PP);
+}
+
+/* POST 结果行 (T-15/D3): 初始化页 pst_i 常显自检结果 —— 全过绿色"自检通过", 失败红色故障文案。 
+ * 注意: batt_ok 的语义是「电池采样链路是否有效」, **不是「电池是否在位」**:
+ *   采样点在 BAT_SW(电池开关之后)。电池不在位但插着充电器时, 充电器经 D2(SS34) 单向
+ *   灌入 BATTERY 节点 => BAT_SW 被充到 ~16.35V => ADC 读数有效 => 仍报「自检通过」。
+ *   要真正检测"电池在位"需硬件(电池座检测脚, 或再采一路 CHG_IN 作对比), 当前不具备。
+ * 只判固件可自证的静态外设(flash/电池); 探头为动态外设, 故障已由圆点+pc0 文案承载。
+ * L1 风格: 结果不变不重发, 每次上电仅一轮(文本+颜色各 1 条)。 */
+static void hmi_update_selftest(void) {
+  static uint8_t s_fail = 0xFF, s_rst = 0xFF;
+  uint8_t fail = (!g_selftest.flash_ok ? 1u : 0u) | (!g_selftest.batt_ok ? 2u : 0u);
+   /* P0-B: 参数区曾失效(掉电落在 102 槽写满后的擦除窗口) => 参数已是出厂默认值, 
+   *   而操作者可能毫不知情(阈值悄悄回到 500/100、标定回到 1000/0 => 浓度失准)。
+   *   本项目的取舍是「参数可弃, 恢复出厂后重设即可」, 故**不做备份区**, 改为保证丢失可见。
+   *   该标志由 param_reset_flag() 读取, 用户重设参数(param_save)后自动清除。 */
+  uint8_t rst = param_reset_flag();
+  char cb[48];
+  if (!g_page_init) { s_fail = 0xFF; return; }    /* 出页复位, 下次上电重推 */
+  if (fail == s_fail && rst == s_rst) return;
+  s_fail = fail; s_rst = rst;
+  if (fail == 0 && rst) snprintf(cb, sizeof(cb), "\xB2\xCE\xCA\xFD\xD2\xD1\xD6\xD8\xD6\xC3\xA3\xAC\xC7\xEB\xD6\xD8\xD0\xC2\xC9\xE8\xD6\xC3\xE3\xD0\xD6\xB5");    /* 参数已重置，请重新设置阈值 */
+  else if (fail == 0) snprintf(cb, sizeof(cb), "\xD7\xD4\xBC\xEC\xCD\xA8\xB9\xFD");                 /* 自检通过 */
+  else if (fail == 1) snprintf(cb, sizeof(cb), "\xB4\xE6\xB4\xA2\xC6\xF7\xB9\xCA\xD5\xCF");        /* 存储器故障 */
+  else if (fail == 2) snprintf(cb, sizeof(cb), "\xB5\xE7\xB3\xD8\xB2\xC9\xD1\xF9\xD2\xEC\xB3\xA3");   /* 电池采样异常 */
+  else                snprintf(cb, sizeof(cb), "\xB4\xE6\xB4\xA2\xC6\xF7/\xB5\xE7\xB3\xD8\xB9\xCA\xD5\xCF");  /* 存储器/电池故障 */
+  tjc_set_txt(OBJ_SELFTEST_I, cb);
+   /* 颜色: 故障红 / 参数已重置橙(警告非故障) / 全过绿 */
+  tjc_set_pco(OBJ_SELFTEST_I, fail ? C_STRIP_RED : (rst ? C_STRIP_ORANGE : C_STRIP_GREEN));
+}
+
+/* 低电三级提示 (T-09/D5 主体, 2026-09-28): lb 文案+色 / 音效 id=5 通道1. 
+ * 新电平需持续 1s 才生效(防负载瞬间跌落误判); 升级即播一次, 2 级 30s / 3 级 10s 重播.
+ * 无自动断电(EN 未接 MCU): 3 级 = 持续催促直到电池耗尽(硬件补 EN 线后可升级真关机). */
+/* 低电三级提示 (T-09): 按页下发 lb / lb_s1 / lb_s2 / lb_i 
+ * 真机根因(2026-10-08): ① 屏端切页会按【页面初值】重绘控件, 而 lb 初值是空串;
+ *   本函数原先在 lv 未变化时只重播音效、【不重发文案】, 且无 g_full_dirty 穿透
+ *   => 切页后永久空白(同族缺陷第 4 例: 凡"进页需重绘"的推送都必须有 full 参与判据)。
+ * ② 原先只发主页 lb, 初始化页/设置页/历史页收不到(屏端静默忽略); 音效 play 是
+ *   全局指令故仍能听到 -> 造成"有声无字"的错觉。
+ */
+static void low_batt_poll(void) {
+  static uint8_t s_lv = 0xFF, s_pend = 0xFF;
+  static uint32_t s_pend_t = 0, s_last_play = 0;
+  uint8_t lv = battery_get_level();
+  char n[16];
+  char cb[32];
+  uint8_t page_full;
+
+  if (lv != s_pend) { s_pend = lv; s_pend_t = HAL_GetTick(); return; }    /* 新电平需稳定 1s */
+  if (HAL_GetTick() - s_pend_t < 1000u) return;
+
+   /* 进页/上电本轮强制重发(full 期间不重播音效, 避免一进页就响) */
+  page_full = g_full_dirty ? 1u : 0u;
+
+  if ((lv == s_lv) && !page_full) {
+    if ((lv == 2 && HAL_GetTick() - s_last_play >= 30000u) ||
+        (lv == 3 && HAL_GetTick() - s_last_play >= 10000u)) {
+      s_last_play = HAL_GetTick();
+      tjc_lowbatt_play();
+    }
+    return;
+  }
+  s_last_play = HAL_GetTick();    /* 本轮已处理(含 full 重发): 刷新静音计时, 避免紧接着又播 */
+  s_lv = lv;
+
+   /* 不再按 g_page_now 选名, 改为 5 页全推 —— 与 tjc_set_bat 同一理由: 
+   *   屏端「出页」可能不发通知(实测厂家页返回键 bk 只发 page 2 不发 printh 4x),
+   *   固件 g_page_now 会与屏端实际页不同步, 按页选名就会推错对象。
+   *   低电提示只在【电平变化】或 full 时发(本函数上方的 L1 判定已门控),
+   *   5 页全推的串口代价可忽略。*/
+  {
+    static const char *const sfx_all[5] = { "", "_s1", "_s2", "_i", "_f" };
+    unsigned k;
+    for (k = 0; k < 5; k++) {
+      snprintf(n, sizeof(n), "lb%s", sfx_all[k]);
+      if (lv == 0) {
+        tjc_set_txt(n, "");                           /* 空串(与页面初值一致) */
+        tjc_set_pco(n, 57149u);                       /* 复位文字色 */
+      } else {
+        if (lv == 1) snprintf(cb, sizeof(cb), "\xB5\xE7\xC1\xBF\xB5\xCD\xA3\xAC\xC7\xEB\xB3\xE4\xB5\xE7");  /* 电量低，请充电 */
+        else if (lv == 2) snprintf(cb, sizeof(cb), "\xB5\xE7\xC1\xBF\xBC\xB4\xBD\xAB\xBA\xC4\xBE\xA1");  /* 电量即将耗尽 */
+        else              snprintf(cb, sizeof(cb), "\xB5\xE7\xC1\xBF\xBD\xAB\xBA\xC4\xBE\xA1\xC7\xEB\xC1\xA2\xBC\xB4\xB3\xE4\xB5\xE7");  /* 电量将耗尽请立即充电 */
+        tjc_set_pco(n, (lv == 1) ? 62689u : 59944u);                     /* 1=橙 2/3=红 */
+        tjc_set_txt(n, cb);
+      }
+    }
+    if (lv != 0 && !page_full) tjc_lowbatt_play();    /* 进级即响一次; full 重发不响 */
+  }
+}
+
+
+
+/* 设置页设备信息行: 屏端原为写死的静态文本("V1.0.0"/"SN-C4F7N-260001"), 
+ *       现推真实值 -- 固件版本(编译期常量) + 产品编号(MCU 内部 Flash 持久化, 见 device_id.c)。
+ * 屏端进页按"页面存的初值"绘制 -> 每次进页(full)都需重推, 由 app_refresh 的 full 分支调用。 */
+static void hmi_push_device_info(void) {
+  char b[48];
+  snprintf(b, sizeof(b), "\xB9\xCC\xBC\xFE\xB0\xE6\xB1\xBE: %s", PRODUCT_FW_VERSION);       /* 固件版本: ... */
+  tjc_set_txt(OBJ_FW_VER, b);
+  snprintf(b, sizeof(b), "\xB2\xFA\xC6\xB7\xB1\xE0\xBA\xC5: %s", device_id_get());     /* 产品编号: ... */
+  tjc_set_txt(OBJ_SN_STR, b);
+}
+
+/* 周期刷新(250ms): 采浓度/报警/统计峰值/写历史/刷新 */
+static void app_refresh(void) {
+   /* 消费 v53 的 g_rx_reattach_fail: 屏幕接收重挂失败后的自愈重试。 
+   *   背景: ErrorCallback 里 HAL_UART_Receive_IT 若返回非 HAL_OK(极少数, 如 UART 仍 BUSY),
+   *     接收链就断了且无人重挂 => 屏幕永久失联。
+   *   每轮主循环重试一次, 直到 HAL_OK 才清标志; 不设次数上限 —— 重试本身极廉价(只发一次
+   *   单字节接收请求), 且「失败就一直重试」比「放弃」更符合设备应self-heal 的定位。
+   *   注意必须放在所有 USART3 发送之前, 且与 RxCpltCallback 的重挂互斥:
+   *     若此处重挂成功, 标志清零后不会再重复挂; 若与 ISR 同时挂, HAL 会返回 HAL_BUSY,
+   *     此时标志保持 1, 下一轮再试 —— 故无需额外临界区。 */
+  if (g_rx_reattach_fail) {
+    __HAL_UART_CLEAR_OREFLAG(&huart3);
+    hmi_get_reset();
+    if (HAL_UART_Receive_IT(&huart3, &rx_byte, 1) == HAL_OK) g_rx_reattach_fail = 0;
+  }
+   /* 进页补发屏障: 屏端仍在重建本页对象时, 本轮【整轮不发】。 
+   * 放在最前面(重挂重试之后、消费 full 之前)是必须的:
+   *   - 消费 full 会把 g_full_dirty 清零, 一旦提前 return 就再也补不回来;
+   *   - hmi_push_device_info / 阈值 / 电池 chip / 顶栏芯片都在其后, 全部需要等。
+   * g_full_dirty 由本函数末尾统一清零, 这里只读不清, 保证等待结束后必然全量补发。*/
+  if (hmi_page_settling()) return;    /* 仍在建页窗口: 本轮什么都不发 */
+   /* [L1] 消费进页全量补发标志: 本轮内所有镜像发送点无条件执行一次 */
+  uint8_t full = g_full_dirty;
+  if (full) { g_full_dirty = 0; hmi_push_device_info(); }    /* 进页补发设备信息行(fw/sn) */
+  rtc_time_sync_poll();
+  thr_hi_readback_poll();
+  char buf[32];
+
+   /* 周期读取电池更新电量 */
+  battery_poll();
+
+
+
+   /* 读取浓度(上限 SENSOR_FS_PPM, 超量程不封顶), 更新峰值/谷值 */
+  g_ppm = sensor_read_ppm();
+   /* 初始化遮罩窗口(上电后 BOOT_INIT_MS 内): 浓度与报警清零, 仅显示"--/初始化" */
+  g_warm = ((HAL_GetTick() - g_boot_ms) < BOOT_INIT_MS) ? 1 : 0;
+  if (g_warm) { g_ppm = 0.0f; g_alarm = 0; }    /* 初始化期间: 浓度显示0(屏端覆盖为--), 不报警 */
+   /* 独立初始化页(页3) 锁页: 预热结束 或 收到跳过 -> 进入主页(页0), 仅一次 */
+  if (g_page_init && (g_skip || !g_warm)) {
+    g_page_init = 0; g_skip = 0;
+    g_page_now   = 0;    /* 固件自己切的页: 屏端不会回发 0x40(那是导航按钮发的), 须自行登记当前页 */
+    g_full_dirty = 1;    /* 进页全量补发: 否则主页 探头/泵 文本+圆点 停在页面初始文案(真机: 显示"探头 未连接") */
+    tjc_page(0);
+     /* 固件主动切页同样要过屏障: 屏端此刻开始重建主页, 本轮后续发送都会撞上 
+     *   重建窗口被排队。置屏障后整轮返回, 下一轮(150ms 后)凭 g_full_dirty 全量补发。
+     *   注意本轮开头已消费过一次 full 并调过 hmi_push_device_info, 但此处把
+     *   g_full_dirty 重新置 1, 故下一轮仍会全量补发, 不会漏。*/
+    g_page_t    = HAL_GetTick();
+    g_page_wait = 1;
+    return;
+  }
+  if (g_ppm > g_peak) g_peak = g_ppm;
+  if (g_ppm < g_min)  g_min  = g_ppm;
+
+   /* 本次测试统计: 仅测试中累计(用于历史页统计框 mx/av/mn/du/ct) */
+  if (g_test) {
+    unsigned p = (unsigned)g_ppm;
+    g_sess_sum += p; g_sess_cnt++;
+    if (p > g_sess_max) g_sess_max = (uint16_t)p;
+    if (p < g_sess_min) g_sess_min = (uint16_t)p;
+  }
+
+   /* 滑动平均(环形缓冲): 满窗时减去最旧值, 只写当前值, 节省CPU */
+  { static float s_ring = 0.0f;
+    if (g_avg_n == AVG_WIN) s_ring -= g_avg_buf[g_avg_i];    /* 减去最旧的样本 */
+    g_avg_buf[g_avg_i] = g_ppm;                               /* 写入当前值 */
+    g_avg_i = (uint16_t)((g_avg_i + 1) % AVG_WIN);
+    if (g_avg_n < AVG_WIN) g_avg_n++;
+    s_ring += g_ppm;                                          /* 累加当前值 */
+    g_avg_run = (float)(s_ring / (double)g_avg_n);           /* 取平均值 */
+  }
+
+   /* 报警等级: 0=正常 1=低报 2=高报 3=超量程 (以当前 g_thr_hi/lo 为准) */
+  if (g_ppm > SENSOR_FS_PPM) g_alarm = 3;
+  else if (g_thr_hi > 0 && g_ppm >= g_thr_hi) g_alarm = 2;
+  else if (g_thr_lo > 0 && g_ppm >= g_thr_lo) g_alarm = 1;
+  else g_alarm = 0;
+
+   /* 报警处理: 高报/低报/超量程保持时蜂鸣, 等级变化后每2s重挂一次 */
+  { static int  prev = -1;
+    static uint32_t tlast = 0;
+    static uint8_t  s_mute_prev = 0;        /* 上轮的 g_mute: 用于识别「取消静音」这一跳变 */
+    if (g_alarm >= 2 && PP.buzzer_en) {
+      uint32_t t = HAL_GetTick();
+      if (g_mute) {                         /* 本次报警被临时静音, 保持哑音 */
+        tjc_alarm_off();
+      } else if (g_alarm != prev || (t - tlast) >= 2000u || g_mute != s_mute_prev) {
+         /* 末项为新增: g_mute 由 1 -> 0(取消静音)时立即恢复鸣响。 
+         *   原判据只有「等级变化」与「距上次 2s」, 取消静音时两者都不满足
+         *   (g_alarm 仍 == prev, 距上次 alarm_on 通常不足 2s) => 最多哑音 2 秒。
+         *   能走到这个 else 分支说明 g_mute 当前为 0, 故此处命中即「取消静音」这一跳变。 */
+        tjc_alarm_on(); tlast = t;
+      }
+    } else {
+      if (prev >= 2) tjc_alarm_off();
+      if (prev >= 2 && g_alarm == 0) g_mute = 0;    /* 报警解除(从报警态回到正常): 恢复初始未静音态 */
+    }
+    prev = g_alarm;
+    s_mute_prev = g_mute;                 /* 供下一轮识别取消静音跳变 */
+  }
+
+   /* 顶栏/状态胶囊提前下发: 原本放在本函数末尾, 但末尾之前是 
+     refill_table()(历史页表格全量重绘 1749B, 9600bps 约 1.82s) => 顶栏芯片
+     每轮都要等表格刷完才发出去, 用户表现为"顶栏/圆点反应慢半拍".
+     现在移到报警处理之后立即发: 依赖已满足(battery_poll() 在更早的 801 行,
+     g_alarm 在 838-842 刚算完, 泵状态 pump_get() 为实时读), 语义与原来完全一致,
+     只是发送时机提前; 固件侧不变, 屏端不变。 */
+  hmi_update_status_chips(full);    /* 刷新探头/泵/电池圆点 + 顶栏色条(L1: 变化才发, 只发当前页) */
+
+   /* 首页静音按钮两态文本(由 MCU 按 g_mute 实时推送): 静音中显示"静音", 报警解除(静音清除)后恢复"已静音". 
+     历史页"重置峰值"按钮已改名为 prst(屏端), 不再占用 bm; 故放开 g_page 限制, bm 现为主页静音按钮所属.
+     [L1: 状态不变则不发; 进页由 full 补发一次] */
+  { static uint8_t s_mute = 0xFFu;
+    uint8_t m = g_mute ? 1u : 0u;
+    if (full || m != s_mute) { s_mute = m;
+      tjc_set_txt(OBJ_MUTE_BTN, m ? "\xD2\xD1\xBE\xB2\xD2\xF4" : "\xBE\xB2\xD2\xF4"); } }
+
+   /* 首页"开始测试/停止测试"按钮(ptg)文案随 g_test 推送: 
+     切页重建后屏端会回默认文案, 进页由 full 补发一次, 其余仅状态翻转时发 */
+  { static uint8_t s_test = 0xFFu;
+    uint8_t t = g_test ? 1u : 0u;
+    if (full || t != s_test) { s_test = t;
+      tjc_set_txt(OBJ_TEST_BTN, t ? "\xB2\xE2\xCA\xD4\xD6\xD0" : "\xBF\xAA\xCA\xBC\xB2\xE2\xCA\xD4"); } }
+
+   /* 每 HIST_PERIOD_MS 写入一条历史记录到 W25Q64 (仅测试中落盘) */
+  { static uint32_t hist_last = 0;
+    uint32_t hn = HAL_GetTick();
+    if (g_test && !g_warm && g_selftest.flash_ok && (hn - hist_last >= HIST_PERIOD_MS)) { hist_last = hn; history_log((uint16_t)g_ppm); }
+
+     /* 历史页表格+统计 [L1 2026-09-24]: 仅历史页(g_page_now==2)刷新; 
+       触发 = 进页补发(g_refill_req) / 页码或总条数变化(翻页·新记录落盘) / 5s 兜底。
+       原实现无条件每 2s 全量重绘 1749B(屏口实际 115200, 约 152ms)且不管停在哪一页,
+       叠加串口发送把主循环撑到秒级; 现稳态主页/设置/初始化页 0 发送。
+       (历史背景: MCU 收不到屏幕翻页 0x42 事件曾致历史页恒空, 故曾无条件重绘;
+        现翻页经 hmi_on_tbl_page(0x23/0x25)可达并置 g_refill_req, 保留 5s 兜底防漏。) */
+     /* 刷新节奏(v76 订正注释): 三个分支的先后即优先级。
+     *   1) g_refill_req     进历史页 / 翻页 / 清历史 -> 立即刷, 不等。
+     *   2) 总条数或页码变化  -> 立即刷; 采样 1s 一条, 故稳态下约每秒刷一次。
+     *   3) 5s 兜底          -> 仅防前两条都被绕过的情况(进页/翻页通知丢失)。
+     *   => 观感是"表格约每秒多一行", 不是"5 秒才跳 5 行"。
+     *   (v54 曾把测试中降频到 5s, 用户反馈"5 秒才更新、一次跳出 5 条"的观感损失,
+     *    v55 已恢复为"条数变化即刷新"; 真正的抗 IWDG 防线是 refill_table 循环内喂狗
+     *    与 tjc_send_raw 20ms 发送超时, 与刷新频率无关, 不应再降频。) */
+    { static uint32_t rlast = 0;
+      static uint32_t s_total = 0xFFFFFFFFu;
+      static uint16_t s_pg = 0u;
+      uint32_t tot = history_total();    /* 内存变量(g_written), 零开销 */
+      if (g_refill_req) { g_refill_req = 0; rlast = hn; refill_table(); s_total = tot; s_pg = g_tbl_page; }
+      else if (g_page_now == 2u && (tot != s_total || g_tbl_page != s_pg)) { rlast = hn; s_total = tot; s_pg = g_tbl_page; refill_table(); }
+      else if (g_page_now == 2u && (hn - rlast >= 5000u)) { rlast = hn; s_total = tot; s_pg = g_tbl_page; refill_table(); } }
+  }
+
+   /* 主页各项刷新: 浓度/峰值/平均/状态/色块/统计 (L1: 不变量带缓存, 变化才发) */
+  {
+     /* 主页: 浓度显示固定 ppm (v2 已移除单位切换) 
+       cc 为数值组件(type 54, 只有 .val, 无 txt 属性; 已与 cct 合并)。
+       必须推 .val 而非 .txt(推 .txt 被忽略 -> 屏幕恒显示初始 0)
+       浓度为实时量, 每轮发送(L1 不门控) */
+    tjc_set_val(OBJ_CONC, (int)(g_ppm));
+    snprintf(g_avg_str, sizeof(g_avg_str), "%.2f", (double)g_avg_run);
+
+     /* [L1] 主页探头/泵状态文本(pc0/pc1)并入 hmi_update_status_chips 按页分发 */
+
+     /* 流量/环境温湿度, 占位显示 */
+
+     /* 浓度最大值/最小值文案(固定 ppm; 未记录时显示0) [L1: 取整值不变则不发] */
+    { int mxi = (int)g_peak;
+      int mni = (g_min > 1e6f) ? 0 : (int)g_min;
+      static int s_mx = -1, s_mn = -1;
+      if (full || mxi != s_mx || mni != s_mn) {
+        s_mx = mxi; s_mn = mni;
+        snprintf(buf, sizeof(buf), "\xD7\xEE\xB4\xF3\xD6\xB5: %.0f", (double)mxi); tjc_set_txt(OBJ_CONC_MAX, buf);
+        snprintf(buf, sizeof(buf), "\xD7\xEE\xD0\xA1\xD6\xB5: %.0f", (double)mni); tjc_set_txt(OBJ_CONC_MIN, buf); } }
+     /* 报警提示(2026-09-22 决策): 浓度大字 cc 随报警等级变色 + 顶栏色条 dvr 上色 
+     *   正常=绿 / 低报=橙 / 高报=红 / 超量程=红 [L1: 颜色不变则不发]
+     * 注: 原先的 ald(文字)/ba(均值徽章)/thv(阈值文字) 控件在屏上不存在, 已一并删除;
+     *     h/l 也不再每 250ms 无条件下发(仅 g_thr_dirty / 进设置页时下发)。 */
+    { uint32_t ccc = CONC_COLOR[g_alarm];
+      static uint32_t s_ccc = 0xFFFFFFFFu;
+      if (full || ccc != s_ccc) { s_ccc = ccc; tjc_set_pco(OBJ_CONC, ccc); } }
+       /* 顶栏色条 dvr 改由 hmi_update_status_chips 按页后缀下发(见其内) */
+     /* hmi_update_status_chips(full) 已上移到本轮报警处理之后(顶栏优先), 此处不再重复调用 */
+  }
+}
+
+/* ---------- 历史统计 (v2 移除曲线, 仅保留右侧统计框) ---------- */
+/* 历史统计下发(最大值/平均/最小/时长/点数): 历史数据页右侧 p2R 统计框 
+ * v3: 统计只算本次测试期间(点击开始测试→停止测试)的真实数据 */
+static void send_hist_stats(void) {
+  char sbuf[24];
+  if (g_sess_cnt == 0) {
+    snprintf(sbuf, sizeof(sbuf), "0"); tjc_set_txt(OBJ_STAT_MAX, sbuf);
+    snprintf(sbuf, sizeof(sbuf), "0"); tjc_set_txt(OBJ_STAT_AVG, sbuf);
+    snprintf(sbuf, sizeof(sbuf), "0"); tjc_set_txt(OBJ_STAT_MIN, sbuf);
+    snprintf(sbuf, sizeof(sbuf), "0"); tjc_set_txt(OBJ_STAT_DUR, sbuf);
+    snprintf(sbuf, sizeof(sbuf), "0"); tjc_set_txt(OBJ_STAT_CNT, sbuf);
+    return;
+  }
+  snprintf(sbuf, sizeof(sbuf), "%u", (unsigned)g_sess_max);
+  tjc_set_txt(OBJ_STAT_MAX, sbuf);
+  snprintf(sbuf, sizeof(sbuf), "%.1f", (double)((float)((double)g_sess_sum / (double)g_sess_cnt)));
+  tjc_set_txt(OBJ_STAT_AVG, sbuf);
+  snprintf(sbuf, sizeof(sbuf), "%u", (unsigned)g_sess_min);
+  tjc_set_txt(OBJ_STAT_MIN, sbuf);
+  snprintf(sbuf, sizeof(sbuf), "%u", (unsigned)((HAL_GetTick() - g_test_t0) / 1000u));
+  tjc_set_txt(OBJ_STAT_DUR, sbuf);
+  snprintf(sbuf, sizeof(sbuf), "%u", (unsigned)g_sess_cnt);
+  tjc_set_txt(OBJ_STAT_CNT, sbuf);
+}
+
+/* 将 epoch 秒拆分为 年月日 时分秒 (公历逆算法, 输出指针非空才写) */
+static void epoch_to_civil(uint32_t t, int *yp, int *mp, int *dp, int *hp, int *mip, int *sp) {
+  uint32_t days = t / 86400u, sod = t % 86400u;
+  int h = (int)(sod / 3600u), mi = (int)((sod % 3600u) / 60u), s = (int)(sod % 60u);
+  uint64_t z = (uint64_t)days + 719468u;
+   /* 直接线性求 era/doe, 适用 1970~2106 (epoch 在 u32 范围内) */
+  uint64_t era = z / 146097ul;
+  uint64_t doe = z - era * 146097ul;
+  unsigned yoe = (unsigned)((doe - doe/1460u + doe/36524u - doe/146096u) / 365u);
+  int y = (int)yoe + (int)(unsigned)era * 400;
+  unsigned doy = (unsigned)(doe - (365u*yoe + yoe/4u - yoe/100u));
+  unsigned mp0 = (5u*doy + 2u)/153u;
+  unsigned d = (unsigned)(doy - (153u*mp0 + 2u)/5u + 1u);
+  unsigned m = (mp0<10u)?(mp0+3u):(mp0-9u);
+  y += (m<=2)?1:0;
+  if (yp) *yp = y; if (mp) *mp = (int)m; if (dp) *dp = (int)d;
+  if (hp) *hp = h; if (mip) *mip = mi; if (sp) *sp = s;
+}
+
+/* 数据表填充: 按当前页读取 HIST_TBL_ROWS(24) 条历史, 双列填充 序号|年-月-日 时:分:秒|浓度 + 页码 */
+static void refill_table(void) {
+  hist_rec_t r[HIST_TBL_ROWS];
+  uint16_t n, i;
+  uint16_t pc, page = g_tbl_page;
+  uint32_t total = history_total();    /* 历史累计条数(序号基准, 环形覆盖不回卷) */
+  char s[40];
+
+  pc = history_page_count(HIST_TBL_ROWS);    /* 总页数 */
+  if (page < 1) page = 1;                    /* 页码钳位 */
+  if (page > pc) page = pc;
+  g_tbl_page = page;
+  n = history_read_page(page, r, HIST_TBL_ROWS);
+
+   /* 循环内喂狗: refill_table 单次调用含 24 次 flash 读 + 78 次串口发送, 
+   *   是全工程最长的单次阻塞操作。**每 2 行喂一次**(v55 由 6 行加密):
+   *   每 2 行最坏耗时 = 2 x 3 次 x 20ms = 120 ms, 远小于 IWDG 窗口(最快 LSI 2133 ms)
+   *   => 任何局部卡顿都无法累计到超窗口而复位。这是恢复"每秒刷新"的安全前提。 */
+  for (i = 0; i < HIST_TBL_ROWS; i++) {
+    char tObj[8], pObj[8], sObj[8];
+    char tbuf[30], vbuf[12], sbuf[6];
+    if ((i % 2u) == 0u) iwdg_feed();
+    if (i < n) {
+      int y, mo, d, hh, mm, ss;
+       /* 时间: epoch -> 年-月-日 时:分:秒 (屏 RTC 校时所得) */
+      epoch_to_civil(r[i].ts, &y, &mo, &d, &hh, &mm, &ss);
+      snprintf(tbuf, sizeof(tbuf), "%04d-%02d-%02d %02d:%02d:%02d", y, mo, d, hh, mm, ss);
+       /* 浓度: 固定 ppm */
+      snprintf(vbuf, sizeof(vbuf), "%u", (unsigned)r[i].ppm);
+       /* [F/v52 语义澄清] 序号 = 【设备累计写入的第几条】(用户 2026-10-09 拍板), 最新记录最大号。 
+         必须计入页码偏移: i 只是本页内的行号(0..23), 该条记录的全局倒序偏移为
+         gi = (page-1)*HIST_TBL_ROWS + i (0=最新)。原实现只减 i, 于是每页都从 total 重新
+         起算 -> 翻页后序号一直停在"最新一组", 与按页正确取值的时间/浓度列错位。
+         关于 %9999: 这是【屏端容量限制下的显示折中】, 不是计数错误。
+           - sn 控件 w=50 像素, 实测只容得下 4 位数字(对照 np0 浓度 w=90),
+             而累计值满环即达 139 万位(7 位) -> 屏端放不下, 只能取模显示 4 位。
+           - 故每累计到 9999 条时序号从 9999 回到 0001。
+           - 内部计数 total(=g_written)本身【单调不回绕】, 翻页/取数都按它算, 逻辑无误。
+         若将来屏端表格列加宽, 去掉 %9999 即可显示真实累计值(本处是唯一的取模点)。 */
+      { uint32_t gi = (uint32_t)(page - 1u) * HIST_TBL_ROWS + (uint32_t)i;
+        uint32_t recnum = total - gi;                /* 行0(最新)=total, 越往前递减 */
+        uint32_t ser = ((recnum - 1u) % 9999u) + 1u;
+        snprintf(sbuf, sizeof(sbuf), "%04lu", (unsigned long)ser); }
+    } else {
+      snprintf(tbuf, sizeof(tbuf), " ");
+      snprintf(vbuf, sizeof(vbuf), " ");
+      snprintf(sbuf, sizeof(sbuf), " ");
+    }
+     /* 屏端为左右双栏: 对象下标 偶=左列, 奇=右列, 行号=下标/2。 
+       要求左列自上而下为第 1..12 条、右列自上而下为第 13..24 条,
+       故把记录序 i 重映射到对象下标 oi: i<12 -> 左列 2*i; i>=12 -> 右列 2*(i-12)+1 */
+    { uint16_t oi = (i < (HIST_TBL_ROWS / 2u)) ? (uint16_t)(2u * i)
+                                               : (uint16_t)(2u * (i - HIST_TBL_ROWS / 2u) + 1u);
+      snprintf(tObj, sizeof(tObj), "%s%u", OBJ_TBL_TIME_BASE, oi);    /* 时间对象 tt0..tt23 */
+      tjc_set_txt(tObj, tbuf);
+      snprintf(pObj, sizeof(pObj), "%s%u", OBJ_TBL_PPM_BASE, oi);     /* 浓度对象 np0..np23 */
+      tjc_set_txt(pObj, vbuf);
+      snprintf(sObj, sizeof(sObj), "%s%u", OBJ_TBL_SN_BASE, oi);      /* 序号对象 sn0..sn23 */
+      tjc_set_txt(sObj, sbuf);
+    }
+  }
+      snprintf(s, sizeof(s), "%u/%u", (unsigned)page, (unsigned)pc);    /* 页码文案 "当前/总页" */
+   /* 写入的页码对象名("pg")必须全库唯一: 本函数每 2s 无条件执行(不管当前停在哪一页), 
+     别的页若有同名对象就会被这里覆盖。主页原本的装饰横幅同名 "pg" 已改名为 ptitle。 */
+  tjc_set_txt(OBJ_TBL_PAGE, s);
+  send_hist_stats();
+}
+
+
+/* 峰值复位: 由按键触发峰值清零并刷新 */
+
+/* 跳过初始化: 初始化页左上角隐藏按钮(printh 07) -> 主循环切主页 */
+void hmi_on_init_skip(void) {
+  if (HAL_GetTick() < SKIP_ARM_MS) return;    /* 开机静默窗口: 丢弃上电误触 */
+  g_skip = 1;
+}
+
+/* 阈值调整: 由屏幕按键增减阈值, MCU 为权威源做+钳位+保存+回写 */
+/* 阈值上下限 (ppm): 不得超过 SENSOR_FS_PPM 上限 */
+#define THR_HI_MIN   100
+#define THR_HI_MAX   1500    /* 高报上限 = 量程 1500 */
+static void thr_commit(void){ g_thr_hi=PP.thr_hi; g_thr_lo=PP.thr_lo; g_thr_dirty=1; g_save_pending=1; g_thr_dirty_t=HAL_GetTick(); }
+void hmi_on_thr_hi_inc(void){ int v=(int)PP.thr_hi+50;                 if(v>THR_HI_MAX)v=THR_HI_MAX; PP.thr_hi=(uint16_t)v; thr_commit(); }
+void hmi_on_thr_hi_dec(void){ int v=(int)PP.thr_hi-50;                 if(v<THR_HI_MIN)v=THR_HI_MIN; if(v<PP.thr_lo)v=PP.thr_lo; PP.thr_hi=(uint16_t)v; thr_commit(); }
+
+/* 屏幕键盘(页2 b210 OK)输入高报阈值后发 0x11: ISR 只置标志 */
+void hmi_on_thr_hi_set(void) { g_thr_hi_req = 1; g_thr_try = 0; g_thr_t0 = HAL_GetTick(); }   /* 记按键时刻 */
+
+/* 采纳回读值: 双重钳位(量程内 + 不低于低报)后落盘 */
+static void thr_apply_hi_val(uint32_t v) {
+  if (v < THR_HI_MIN) v = THR_HI_MIN;
+  if (v > THR_HI_MAX) v = THR_HI_MAX;
+  if (v < PP.thr_lo)  v = PP.thr_lo;
+  if ((uint16_t)v == PP.thr_hi) return;    /* 值未变: 不重复落盘/推送(设置页 load 每次回读会走到这里) */
+  PP.thr_hi = (uint16_t)v;
+  thr_commit();
+}
+
+/* 主循环轮询: 发起 h.val 回读(带超时与重试上限, 最多 5 次) */
+static void thr_hi_readback_poll(void) {
+  uint32_t now = HAL_GetTick();
+  if (!g_thr_hi_req) return;
+  if (g_thr_wait) { if (now > g_thr_deadline) { g_thr_wait = 0; g_get_busy = 0; } else return; }   /* 超时清 busy */
+  if (g_rtc_wait) return;    /* RTC 校时占用通道 -> 本轮不发; 不消耗重试预算(让出在 g_thr_try++ 之前) */
+   /* 放弃判据: 耐心时间用尽(而非重试次数用尽)。屏幕在启动期重建页面可达约 1.8s 阻塞, 
+   *   原来的 500ms x 5 次窗口会把「屏还在忙」误判为「屏不响应」并静默丢弃用户按键。 */
+  if ((uint32_t)(now - g_thr_t0) >= THR_HI_PATIENCE_MS) {
+    g_thr_hi_req = 0; g_thr_try = 0; g_get_busy = 0; g_thr_wait = 0; return;    /* 仍须清 busy, 否则 RTC 永久堵死 */
+  }
+  g_thr_try++;
+  g_thr_wait = 1; g_get_busy = 1; g_thr_deadline = now + 500u;
+  tjc_get(OBJ_THR_HI_VAL, "val");
+}
+
+/* 首页静音两态切换(方案a): 点击在"静音/已静音"间反复切换; 报警解除时主循环清除静音 */
+void hmi_on_buz_mute(void) { g_mute = !g_mute; }
+
+/* hmi_on_pump_toggle() 已删除 -- 接口审计(2026-09-30)确认屏端全工程无 printh 18, 
+ *       屏上"泵/测试"按钮走 0x24 -> hmi_on_test_toggle(); 其"泵启动清零峰值"逻辑已并入该函数。 */
+
+/* ================= 标定 / 恢复出厂 / 清空历史 ================= 
+ * fix12 变更:
+ *   ① 屏幕回调只在 ISR 里置请求标志, 动作由主循环执行(避免中断内阻塞 flash 写与 HAL_Delay 死锁);
+ *   ② 标定改两点式: 零点记下点 raw0 并立即点平; 量程用 raw0/raw1 联合解 k、b, 两点都精确且顺序无关;
+ *   ③ 前置校验: 探头在线 + 开机满 CAL_WARM_MS;
+ *   ④ 所有返回路径都写结果: 按钮 3 字短词 + 设置页右栏详细原因。
+ * ============================================================= */
+
+/* 标定失败原因 */
+enum {
+  CAL_E_OK = 0, CAL_E_OFFLINE, CAL_E_WARMUP, CAL_E_DIRTY,
+  CAL_E_WINDOW, CAL_E_BADRAW, CAL_E_NOZERO, CAL_E_TOOCLOSE, CAL_E_KCLAMP,
+  CAL_E_FLASH, CAL_E_CONFIRM, CAL_E_CHANGED,
+  CAL_E_SENT,   /* 厂商指令已下发 */
+  CAL_E_IDLE    /* 结果已展示完毕, 按钮恢复默认 */
+};
+
+/* 前置校验: 0=可标定, 否则返回失败原因 */
+static uint8_t cal_precheck(void)
+{
+  if (!sensor_online()) return CAL_E_OFFLINE;
+  if ((HAL_GetTick() - g_boot_ms) < CAL_WARM_MS) return CAL_E_WARMUP;
+  return CAL_E_OK;
+}
+
+/* epoch 秒 -> 年/月/日 (civil_from_days) */
+static void epoch_to_ymd(uint32_t e, int *py, int *pmo, int *pd)
+{
+  int z = (int)(e / 86400u) + 719468;
+  int era = (z >= 0 ? z : z - 146096) / 146097;
+  unsigned doe = (unsigned)(z - era * 146097);
+  unsigned yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+  unsigned doy = doe - (365u * yoe + yoe / 4u - yoe / 100u);
+  unsigned mp = (5u * doy + 2u) / 153u;
+  unsigned dd = doy - (153u * mp + 2u) / 5u + 1u;
+  unsigned mm = (mp < 10u) ? (mp + 3u) : (mp - 9u);
+  *py = (int)yoe + era * 400 + (mm <= 2u);
+  *pmo = (int)mm;
+  *pd = (int)dd;
+}
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winvalid-source-encoding"    /* 源码为 GBK, 中文串必需; 字节已实证原样入 hex */
+
+/* 结果上报: 按钮写短词, 设置页右栏写完整原因 */
+static void cal_report(uint8_t which, uint8_t reason)
+{
+  char rs[64] = {0};    /* v34: 成功文案含补偿/灵敏度, 48 不够; 
+                   * 显式清零: 任一 case 漏赋 rs 时, 末尾仍会推它,
+                   *    栈上残留内容会显示成乱码文字 */
+  const char *btn = (which == CAL_REQ_ZERO) ? OBJ_CAL0_BTN
+                  : (which == CAL_REQ_SPAN) ? OBJ_CAL1_BTN
+                  : (which == CAL_REQ_ZW)   ? OBJ_ZW_BTN
+                  : (which == CAL_REQ_LO15) ? OBJ_LO15_BTN : OBJ_CAL_FAC_BTN;
+   /* 详细原因行只在厂家页存在(crs_f); 其余页推 crs_s1 是死引用 */
+  const char *rs_obj = (g_page_now == 5u) ? OBJ_CAL_RS_F : OBJ_CAL_RS;
+  int push_rs = (g_page_now == 5u);
+  const char *word;
+  int k100 = (int)((PP.cal_k + 5) / 10);    /* v34: 千分斜率四舍五入到百分, 供量程成功文案 */
+
+  switch (reason) {
+    case CAL_E_OK:
+      word = "执行";
+      if (which == CAL_REQ_ZERO)      snprintf(rs, sizeof(rs), "零点标定完成 补偿%dppm，请确认环境洁净", (int)PP.cal_b);
+      else if (which == CAL_REQ_SPAN) snprintf(rs, sizeof(rs), "量程标定完成 灵敏度 %d.%02d", k100 / 100, k100 % 100);
+      else if (which == CAL_REQ_ZW)   snprintf(rs, sizeof(rs), "硬件零点指令已下发，请确认读数是否归零");
+      else if (which == CAL_REQ_LO15) snprintf(rs, sizeof(rs), "15ppm 下限指令已下发，15 以内应显示 0");
+      else                            snprintf(rs, sizeof(rs), "已恢复出厂设置，设备重启中");
+      break;
+     /* 指令已下发(无法从 MCU 侧确认传感器是否接受, 需人工核对读数) */
+    case CAL_E_SENT:
+      word = "已下发";
+       /* 原先此分支不赋 rs[], 右栏会残留上一条"待确认"文案 */
+      if (which == CAL_REQ_LO15)      snprintf(rs, sizeof(rs), "15ppm下限指令已下发，15以内将显示0；需核对读数");
+      else                            snprintf(rs, sizeof(rs), "硬件零点指令已下发，请确认读数是否归零");
+      break;
+
+     /* 结果已展示, 按钮恢复各自己的默认文字。 
+     *   cf(恢复出厂) 的屏端默认 txt 是「恢复」, 其余四个是「执行」——
+     *   原先这里硬编码 "执行", 一旦给它挂上恢复计时就会写错字。*/
+    case CAL_E_IDLE:
+      if (which == CAL_REQ_FAC) { word = "恢复"; snprintf(rs, sizeof(rs), "可再次执行恢复出厂"); }
+      else                     { word = "执行"; snprintf(rs, sizeof(rs), "可在洁净空气中再次标定"); }
+      break;
+    case CAL_E_OFFLINE:  word = "未接通"; snprintf(rs, sizeof(rs), "标定失败：探头未连接"); break;
+    case CAL_E_WARMUP:   word = "预热中"; snprintf(rs, sizeof(rs), "标定失败：需开机 %u 秒后（示数稳定）", (unsigned)(CAL_WARM_MS / 1000u)); break;
+    case CAL_E_DIRTY:    word = "浓度高"; snprintf(rs, sizeof(rs), "零点失败：当前超 %d ppm，需洁净空气", CAL_ZERO_MAX_PPM); break;
+    case CAL_E_WINDOW:   word = "超窗口"; snprintf(rs, sizeof(rs), "量程失败：示数需在 %d~%d ppm",
+                                                (int)(SENSOR_SPAN_PPM * (1.0f - CAL_SPAN_TOL)),
+                                                (int)(SENSOR_SPAN_PPM * (1.0f + CAL_SPAN_TOL))); break;
+    case CAL_E_BADRAW:   word = "非法值"; snprintf(rs, sizeof(rs), "标定失败：原始读数为 0，检查探头"); break;
+    case CAL_E_NOZERO:   word = "无零点"; snprintf(rs, sizeof(rs), "量程失败：请先做零点标定"); break;
+    case CAL_E_TOOCLOSE: word = "点太近"; snprintf(rs, sizeof(rs), "量程失败：与零点读数差不足 %d", CAL_MIN_SPAN_DELTA); break;
+    case CAL_E_KCLAMP:   word = "已限幅"; snprintf(rs, sizeof(rs), "量程标定：斜率超范围已限幅"); break;
+case CAL_E_FLASH:    word = "存储坏"; snprintf(rs, sizeof(rs), "失败：存储器故障，无法保存"); break;
+    case CAL_E_CONFIRM:
+      word = "待确认";
+      if (which == CAL_REQ_FAC)        snprintf(rs, sizeof(rs), "将清空全部参数与历史记录（不可撤销），3秒内再按确认");
+      else if (which == CAL_REQ_ZW)    snprintf(rs, sizeof(rs), "当前 %dppm，须洁净空气，3秒内再按确认", (int)g_cal0_ppm0);
+      else if (which == CAL_REQ_LO15) snprintf(rs, sizeof(rs), "将下发 15ppm 下限指令（不可撤销），3秒内再按确认");
+      else                            snprintf(rs, sizeof(rs), "当前 %dppm，须洁净空气，3秒内再按确认", (int)g_cal0_ppm0);
+      break;
+    case CAL_E_CHANGED:  word = "已作废"; snprintf(rs, sizeof(rs), "浓度已变化，请重新点击零点标定"); break;
+    default:             word = "失败";   snprintf(rs, sizeof(rs), "标定失败"); break;
+  }
+  tjc_set_txt(btn, word);
+  if (push_rs) tjc_set_txt(rs_obj, rs);
+
+   /* 统一恢复计时(取代原先只在 CAL_E_SENT 两处手工置位的老做法)。 
+   *   只要本次写入的按钮文案不是【该按钮的屏端默认 txt】, 就挂上延时恢复,
+   *   由 cal_poll() 到点调 CAL_E_IDLE 复位 => 失败态/待确认/已下发全覆盖。
+   *   CAL_E_IDLE 自身写的就是默认态, 故不会自我续期, 天然只触发一次。
+   *   判据用 strcmp 而非指针比较: 同名 GBK 字面量是否被合并由编译器决定。*/
+  if (reason == CAL_E_CONFIRM) {
+    g_restore_btn[which] = CAL_REQ_NONE;    /* 待确认态由 cal_poll 的 armed 超时块负责, 不重复挂 */
+    g_restore_t0 [which] = 0;
+  } else if (reason == CAL_E_IDLE ||
+             strcmp(word, (which == CAL_REQ_FAC) ? "恢复" : "执行") == 0) {
+    g_restore_btn[which] = CAL_REQ_NONE;    /* 已是默认态, 无需恢复 */
+    g_restore_t0 [which] = 0;
+  } else {
+     /* 同一次挂起只记一次时刻: 已挂起则不续期, 
+     * 否则主循环里若反复上报同一失败原因会永远不到期。*/
+    if (g_restore_btn[which] == CAL_REQ_NONE) g_restore_t0[which] = HAL_GetTick();
+    g_restore_btn[which] = which;
+  }
+}
+
+/* 标定状态上报(进设置页时): 未标定 / 日期 / 超期变橙 */
+static void cal_upload_status(void)
+{
+   /* 标定状态/结果两行只存在于厂家设置页(cst_f/crs_f); 
+   *   v9 起设置页已删除 cst_s1/crs_s1, 故非厂家页一律不上报(原先是死引用)。 */
+  const char *obj_st;
+  char s[56];       /* v34: 状态行追加补偿值, 40 不够 */
+  uint32_t now, age;
+  int yy, mo, dd;
+
+  if (g_page_now != 5u) return;    /* 标定两行只在厂家页 */
+  obj_st = OBJ_CAL_ST_F;
+
+  if (!PP.cal_valid || PP.cal_ts == 0u) {    /* cal_valid 在此真正被读 */
+    tjc_set_txt(obj_st, "标定：未标定");
+    tjc_set_pco(obj_st, (uint32_t)C_CAL_NORMAL);
+    return;
+  }
+  epoch_to_ymd(PP.cal_ts, &yy, &mo, &dd);
+  now = rtc_wall_seconds();
+  age = (now > PP.cal_ts) ? (now - PP.cal_ts) : 0u;
+  if (age > CAL_EXPIRE_DAYS * 86400u) {
+    snprintf(s, sizeof(s), "标定：%04d-%02d-%02d 已超期 补偿%dppm", yy, mo, dd, (int)PP.cal_b);
+    tjc_set_pco(obj_st, (uint32_t)C_STRIP_ORANGE);
+  } else {
+    snprintf(s, sizeof(s), "标定：%04d-%02d-%02d 补偿%dppm", yy, mo, dd, (int)PP.cal_b);
+    tjc_set_pco(obj_st, (uint32_t)C_CAL_NORMAL);
+  }
+  tjc_set_txt(obj_st, s);
+}
+
+#pragma clang diagnostic pop
+
+/* 零点标定(主循环): 洁净空气中记录下点 raw0, 并立即把零点点平 */
+static void cal_do_zero(void)
+{
+  uint8_t e = cal_precheck();
+  float ppm, raw, dt;
+
+  if (e) { g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE; cal_report(CAL_REQ_ZERO, e); return; }
+  ppm = sensor_read_ppm();
+  if (ppm >= (float)CAL_ZERO_MAX_PPM) { g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE; cal_report(CAL_REQ_ZERO, CAL_E_DIRTY); return; }
+
+   /* 两步确认: 第一次点击只回报当前浓度(便于判断是否洁净), 不写 Flash; 
+   *   窗口 CAL_ZERO_CONFIRM_MS 内第二次点击才真正标定; 窗口内浓度变化超过
+   *   CAL_ZERO_STABLE_PPM 视为环境已变 -> 本次作废, 需重新从第一次点击开始。 */
+  if (CAL0_ARMED_BY(CAL_REQ_ZERO) && (HAL_GetTick() - g_cal0_t0) <= CAL_ZERO_CONFIRM_MS) {
+    dt = ppm - g_cal0_ppm0;
+    if (dt < 0.0f) dt = -dt;
+    if (dt > CAL_ZERO_STABLE_PPM) { g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE; cal_report(CAL_REQ_ZERO, CAL_E_CHANGED); return; }
+    g_cal0_armed = 0;
+  } else {
+     /* 归属标记: 若 armed 属于别的操作, 先作废再重新 arm */
+    if (g_cal0_armed) g_cal0_armed = 0;
+    g_cal0_armed = 1; g_cal0_owner = CAL_REQ_ZERO;
+    g_cal0_t0 = HAL_GetTick(); g_cal0_ppm0 = ppm;
+    cal_report(CAL_REQ_ZERO, CAL_E_CONFIRM);
+    return;
+  }
+
+   /* 删掉原 if (raw <= 0.0f) -> CAL_E_BADRAW 判据 (P0-B): 
+   *   sensor_read_raw() 直接返回传感器原始浓度(无 0 保护), 而【洁净空气中原始读数就是 0】
+   *   => 在真洁净环境做零点标定会误报「原始读数为 0，检查探头」而失败,
+   *      恰好与 v49「引导用户在洁净环境标定」的目的冲突。
+   *   该判据本意是防「探头没出数」, 但 cal_precheck() 已检查 sensor_online(), 属冗余。
+   *   仍保留 raw < 0 的防护(负值不可能, 但防止 cast到 int32 后异常)。*/
+  raw = sensor_read_raw();
+  if (raw < 0.0f) { cal_report(CAL_REQ_ZERO, CAL_E_BADRAW); return; }
+
+  PP.cal_raw0  = (int32_t)raw;                                     /* 两点标定的下点 */
+  PP.cal_b     = -(int32_t)((raw * (float)PP.cal_k) / 1000.0f);    /* 立即点平 */
+  PP.cal_ts    = rtc_wall_seconds();
+  PP.cal_valid = 1;
+  param_save_safe();
+  sensor_set_cal(PP.cal_k, PP.cal_b);
+  g_cal_st_dirty = 1;    /* 标定状态行实时刷新: 不必切页回来才看到新日期/新补偿 */
+  cal_report(CAL_REQ_ZERO, CAL_E_OK);
+}
+
+/* 量程标定(主循环): 通入 SENSOR_SPAN_PPM 标定气, 用 raw0/raw1 两点联合解 k、b 
+ *   ppm(raw0)=0, ppm(raw1)=SENSOR_SPAN_PPM  =>  k = span*1000/(raw1-raw0), b = -raw0*k/1000 */
+static void cal_do_span(void)
+{
+  uint8_t e = cal_precheck();
+  int32_t raw0;
+  float ppm, raw1, lo, hi;
+  int64_t k, b;
+
+  g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE;    /* v49: 换操作即作废未完成的零点确认(须在 precheck 之前, 失败路径也要清) */
+  if (e) { cal_report(CAL_REQ_SPAN, e); return; }
+  raw0 = PP.cal_raw0;
+  if (raw0 == (int32_t)PARAM_RAW0_NONE) { cal_report(CAL_REQ_SPAN, CAL_E_NOZERO); return; }
+
+  ppm = sensor_read_ppm();
+  lo  = SENSOR_SPAN_PPM * (1.0f - CAL_SPAN_TOL);
+  hi  = SENSOR_SPAN_PPM * (1.0f + CAL_SPAN_TOL);
+  if (ppm < lo || ppm > hi) { cal_report(CAL_REQ_SPAN, CAL_E_WINDOW); return; }
+
+  raw1 = sensor_read_raw();
+   /* raw1 为 1000ppm 标气读数, 恒 >0; 保留判据仅作防御 */
+  if (raw1 <= 0.0f) { cal_report(CAL_REQ_SPAN, CAL_E_BADRAW); return; }
+  if (((int32_t)raw1 - raw0) < CAL_MIN_SPAN_DELTA) { cal_report(CAL_REQ_SPAN, CAL_E_TOOCLOSE); return; }
+
+  k = ((int64_t)SENSOR_SPAN_PPM * 1000) / ((int64_t)raw1 - (int64_t)raw0);
+  b = -((int64_t)raw0 * k) / 1000;
+  e = CAL_E_OK;
+  if (k < SENSOR_CAL_K_MIN) { k = SENSOR_CAL_K_MIN; e = CAL_E_KCLAMP; }
+  if (k > SENSOR_CAL_K_MAX) { k = SENSOR_CAL_K_MAX; e = CAL_E_KCLAMP; }
+
+  PP.cal_k     = (int32_t)k;
+  PP.cal_b     = (int32_t)b;
+  PP.cal_ts    = rtc_wall_seconds();
+  PP.cal_valid = 1;
+  param_save_safe();
+  sensor_set_cal(PP.cal_k, PP.cal_b);
+  g_cal_st_dirty = 1;    /* 同上, 量程标定后实时刷新 cst_f */
+  cal_report(CAL_REQ_SPAN, e);
+}
+
+/* ---- 硬件零点校准: 向 UART4 下发厂商指令 ---- 
+ * 防护: 固件侧两步确认(3 秒窗口内再按一次 + 浓度变化超限作废),
+ * 且当前浓度必须低于 CAL_ZERO_MAX_PPM。屏端为普通短按, 与 c0/c1 同构。
+ 该指令把传感器内部零点归零, 【有被测气体时执行会导致读数异常】, 防护不可省。 */
+static void cal_do_zero_hw(void)
+{
+  uint8_t e = cal_precheck();
+  float ppm, dt;
+
+  if (e) { g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE; cal_report(CAL_REQ_ZW, e); return; }
+  ppm = sensor_read_ppm();
+  if (ppm >= (float)CAL_ZERO_MAX_PPM) { g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE; cal_report(CAL_REQ_ZW, CAL_E_DIRTY); return; }
+
+   /* 两步确认: 第一次只回报当前浓度, 窗口内第二次才真正下发指令 */
+  if (CAL0_ARMED_BY(CAL_REQ_ZW) && (HAL_GetTick() - g_cal0_t0) <= CAL_ZERO_CONFIRM_MS) {
+    dt = ppm - g_cal0_ppm0;
+    if (dt < 0.0f) dt = -dt;
+    if (dt > CAL_ZERO_STABLE_PPM) { g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE; cal_report(CAL_REQ_ZW, CAL_E_CHANGED); return; }
+    g_cal0_armed = 0;
+  } else {
+     /* 归属标记: 若 armed 属于别的操作, 先作废再重新 arm */
+    if (g_cal0_armed) g_cal0_armed = 0;
+    g_cal0_armed = 1; g_cal0_owner = CAL_REQ_ZW;
+    g_cal0_t0 = HAL_GetTick(); g_cal0_ppm0 = ppm;
+    cal_report(CAL_REQ_ZW, CAL_E_CONFIRM);
+    return;
+  }
+
+  sensor_send_cmd(SENSOR_CMD_ZERO_HW, SENSOR_CMD_ZERO_HW_LEN);
+  cal_report(CAL_REQ_ZW, CAL_E_SENT);
+}
+
+/* ---- 15ppm 下限: 依次下发两条厂商指令, 之后传感器侧 0~15ppm 截零 ---- 
+ * 同样走两步确认。两条指令必须按序下发, 缺一无效。 */
+static void cal_do_lo15(void)
+{
+  uint8_t e = cal_precheck();
+  float ppm, dt;
+
+  if (e) { g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE; cal_report(CAL_REQ_LO15, e); return; }
+  ppm = sensor_read_ppm();
+
+  if (CAL0_ARMED_BY(CAL_REQ_LO15) && (HAL_GetTick() - g_cal0_t0) <= CAL_ZERO_CONFIRM_MS) {
+    dt = ppm - g_cal0_ppm0;
+    if (dt < 0.0f) dt = -dt;
+    if (dt > CAL_ZERO_STABLE_PPM) { g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE; cal_report(CAL_REQ_LO15, CAL_E_CHANGED); return; }
+    g_cal0_armed = 0;
+  } else {
+     /* 归属标记: 若 armed 属于别的操作, 先作废再重新 arm */
+    if (g_cal0_armed) g_cal0_armed = 0;
+    g_cal0_armed = 1; g_cal0_owner = CAL_REQ_LO15;
+    g_cal0_t0 = HAL_GetTick(); g_cal0_ppm0 = ppm;
+    cal_report(CAL_REQ_LO15, CAL_E_CONFIRM);
+    return;
+  }
+
+  sensor_send_cmd(SENSOR_CMD_LO15_A, SENSOR_CMD_LO15_LEN);
+  HAL_Delay(50);                       /* 两条指令间留间隔, 传感器需时间解析 */
+  sensor_send_cmd(SENSOR_CMD_LO15_B, SENSOR_CMD_LO15_LEN);
+  cal_report(CAL_REQ_LO15, CAL_E_SENT);
+}
+
+/* 恢复出厂(主循环): 只重置参数, 不动历史记录 */
+static void cal_do_factory(void)
+{
+   /* 恢复出厂的两段确认从屏端搬到固件。 
+   *   原因: 原屏端用 cft/cfs 变量做两段, 中途放弃就永久停在「确认」,
+   *   固件完全管不到(屏端状态)。v65 屏包已把 cf 改为单发 D5/5A/17,
+   *   由这里统一 arm / 超时 / 下发, 与其余四个按钮同一套机制。
+   *   原开头的强制清 armed 必须删掉, 否则永远无法进入等待确认态。*/
+  if (CAL0_ARMED_BY(CAL_REQ_FAC) && (HAL_GetTick() - g_cal0_t0) <= CAL_ZERO_CONFIRM_MS) {
+    g_cal0_armed = 0; g_cal0_owner = CAL_REQ_NONE;
+  } else {
+    if (g_cal0_armed) g_cal0_armed = 0;    /* armed 属于别的操作: 作废后重新 arm */
+    g_cal0_armed = 1; g_cal0_owner = CAL_REQ_FAC;
+    g_cal0_t0 = HAL_GetTick();
+    cal_report(CAL_REQ_FAC, CAL_E_CONFIRM);
+    return;
+  }
+  if (!g_selftest.flash_ok) { cal_report(CAL_REQ_FAC, CAL_E_FLASH); return; }    /* T-15: Flash 故障禁写 */
+  param_factory(&PP, 1);                  /* 保留 hist_base -> 不撤销"清空历史" */
+  g_thr_hi = PP.thr_hi; g_thr_lo = PP.thr_lo;
+  sensor_set_cal(PP.cal_k, PP.cal_b);
+  app_apply_threshold();
+  cal_report(CAL_REQ_FAC, CAL_E_OK);
+  HAL_Delay(200);                         /* 主循环上下文, 让屏显示完再复位 */
+  NVIC_SystemReset();
+}
+
+/* 主循环: 消费标定请求 */
+static void cal_poll(void)
+{
+
+   /* 结果展示计时: 到点把按钮恢复默认, 右栏换成可再次标定的提示 */
+   /* 遍历全部操作, 各???独立计时。 
+   *   必须先把该格清掉再调 cal_report —— cal_report 末尾会写同一格,
+   *   若先调后清, 恢复动作会被随后的清零抹掉, 按钮又停在旧文案。*/
+  {
+    uint32_t now = HAL_GetTick();
+    uint8_t  w;
+    for (w = 1u; w < CAL_REQ_COUNT; w++) {       /* 0=NONE 无按钮 */
+      if (g_restore_btn[w] == CAL_REQ_NONE) continue;
+      if ((now - g_restore_t0[w]) < CAL_RESULT_HOLD_MS) continue;
+      g_restore_btn[w] = CAL_REQ_NONE;
+      g_restore_t0 [w] = 0;
+      cal_report(w, CAL_E_IDLE);
+    }
+  }
+
+   /* 待确认超时自动解锁(根治「按多少次都是待确认」)。 
+   *   病根: g_cal0_armed 置 1 后无人清, 第二次点击若已超窗口, 走 else 分支
+   *   【重新 arm】又报「待确认」=> 按钮永远停在「待确认」, 走不到下发。
+   *   这里到点强制清 armed/owner 并把按钮恢复默认; 顺带清掉 g_cal0_ppm0
+   *   防止陈旧读数残留在文案里。
+   *   注意: 与上面恢复计时块互不冲突 —— 本块只在 armed 态才做事, 而结果态
+   *   路径都会清 armed。窗口内正常第二次点击时本块不触发(时间未到)。*/
+  if (g_cal0_armed && (HAL_GetTick() - g_cal0_t0) > CAL_ZERO_CONFIRM_MS) {
+    uint8_t ow = g_cal0_owner;
+    g_cal0_armed  = 0;
+    g_cal0_owner  = CAL_REQ_NONE;
+    g_cal0_ppm0   = 0.0f;
+    cal_report(ow, CAL_E_IDLE);
+  }
+  uint8_t r = g_cal_req;
+
+  if (g_cal_st_dirty) { g_cal_st_dirty = 0; cal_upload_status(); }
+  if (!r) return;
+  g_cal_req = CAL_REQ_NONE;
+  if (r == CAL_REQ_ZERO)      cal_do_zero();
+  else if (r == CAL_REQ_SPAN) cal_do_span();
+  else if (r == CAL_REQ_FAC)  cal_do_factory();
+  else if (r == CAL_REQ_ZW)   cal_do_zero_hw();
+  else if (r == CAL_REQ_LO15) cal_do_lo15();
+}
+
+/* 主循环: 消费"清空历史"请求 */
+static void hist_clear_poll(void)
+{
+  if (!g_hist_clear_req) return;
+  g_hist_clear_req = 0;
+  if (g_selftest.flash_ok) {
+    history_clear();
+     /* P0-A 修复: 同步 PP.hist_base —— 三次排查确认的【数据损坏路径】。 
+     *   缺陷: history_clear() 只推进 history.c 内部的静态 g_hist_base, 而落盘走
+     *     param_set_hist_base(),后者用【局部 param_t t】写 flash
+     *     => 全局 PP.hist_base 从头到尾没被更新。
+     *   而 param_init(&PP) 只在开机执行一次(main.c:428), 之后 param_save_safe()
+     *     一律 param_save(&PP) => 把开机时的旧 hist_base 连同新阈值写进新槽,
+     *     【覆盖掉刚写入的清空标记】。
+     *   后果链: 下次开机 history_init() 算出的 gen = maxhead - hist_base 少 1
+     *     => ps = gen % HIST_SECTORS 指向错误扇区(真实数据在扇区0, 去读扇区1)
+     *     => 读到全 0xFF 空扇区 => g_written 虚高(真实50条会显示成682条)
+     *     => 后续 history_log() 触发 history.c 的整扇区擦除, 【逐步擦掉真实历史数据】。
+     *   触发: 清空历史 -> 任意改一次阈值/标定 -> 重新上电(三步, 无需掉电)。
+     *   加重因素(复核时发现): main.c 恢复出厂走 param_factory(&PP,1),
+     *     而它 uint32_t hb = p->hist_base 保留的正是这个陈旧值
+     *     => 恢复出厂不但不修正, 反而把错位【固化】。本行同步后该路径一并修好。 */
+    PP.hist_base = history_get_base();
+  }
+  if (!g_page_init) { g_tbl_page = 1; refill_table(); }
+}
+
+/* --- 屏幕回调(USART3 接收中断上下文): 只置请求标志, 动作交主循环 --- */
+void hmi_on_cal_zero(void)    { g_cal_req = CAL_REQ_ZERO; }
+/* 两个厂商指令的请求入口 */
+void hmi_on_sensor_zero_hw(void) { g_cal_req = CAL_REQ_ZW;   }
+void hmi_on_sensor_lo15(void)   { g_cal_req = CAL_REQ_LO15; }
+void hmi_on_cal_span(void)    { g_cal_req = CAL_REQ_SPAN; }
+void hmi_on_cal_factory(void) { g_cal_req = CAL_REQ_FAC;  }
+void hmi_on_hist_clear(void)  { g_hist_clear_req = 1;     }
+
+
+/* 数据表翻页(±1): 页码钳位并刷新 */
+void hmi_on_tbl_page(int delta) {
+  uint16_t pc = history_page_count(HIST_TBL_ROWS);
+  int np = (int)g_tbl_page + delta;
+  if (np < 1) np = 1;
+  if ((uint16_t)np > pc) np = (int)pc;
+  g_tbl_page = (uint16_t)np;
+  g_refill_req = 1;    /* [L1] 表格刷新移到主循环(回调内阻塞发送约1749B, 违背 fix12 约定) */
+}
+
+/* 页面切换回调: 记录当前页, 并对新页同步显示 (v2 移除单位与曲线视图) */
+/* 取当前页号, 供 tjc_set_bat 按页选 chip 名 */
+uint8_t hmi_get_page(void) {
+  return g_page_now;
+}
+
+void hmi_on_page_enter(int p) {
+   /* 看门狗【完全不属于 ISR】: 原先这里调 iwdg_feed(), 而该函数会裁决是否 
+   *   NVIC_SystemReset() —— 放在 ISR 里意味着「任何一次屏端切页事件都能触发复位」:
+   *   噪声误发 0x40~0x43 + 主循环恰已卡住 >4s => 切页瞬间直接复位。
+   * iwdg_enable() 同样移出: 它会重置 g_iwdg_t, 等价于让 ISR 活动刷新软件狗的计时,
+   *   会【掩盖】「主循环已停」这一本该触发复位的真状态。
+   * v53 启用硬件 IWDG 后, 喂狗点已只在主循环(while 内 3 处) => 主循环卡住时
+   *   硬件狗在 2.13~4.27s 内独立复位, 无需 ISR 参与。 */
+   /* [L1] 记录当前页 + 置全量补发: 切页重建后屏端控件回默认值, 
+   * 下一轮 app_refresh 按 full 标志把镜像完整重发一遍(此前靠每轮无条件重发掩盖) */
+  g_page_now   = (uint8_t)p;
+  g_full_dirty = 1;
+   /* 置进页屏障: 屏端此刻正在重建本页对象, 补发指令会被排队延后执行 
+   * (现象: 顶栏先显示页面默认值, 过一会才跳成真实值)。记下时刻,
+   * 由 app_refresh 开头等 HMI_PAGE_SETTLE_MS 到点后再全量补发。*/
+  g_page_t    = HAL_GetTick();
+  g_page_wait = 1;
+  if (p == 1) {               /* 进入设置页: 从 MCU 读回阈值等回读值 */
+    g_cal_st_dirty = 1;         /* 标定状态改由主循环上报(避免 ISR 内阻塞发送) */
+    g_thr_push = 1;             /* 阈值下发同样交主循环: ISR 内发串口会与页面重绘竞态 */
+  }
+
+  if (p == 5) {               /* 进入厂家页: 标定状态/结果两行改推 cst_f/crs_f */
+    g_cal_st_dirty = 1;
+  }
+
+  if (p == 2) {               /* 进入历史页: 表格填充移到主循环(原在此直接 refill_table(), 
+                                ISR 内阻塞发送约1749B/1.82s, 违背 fix12 "回调只置标志"约定) */
+    g_tbl_page = 1;
+    g_refill_req = 1;
+  }
+}
+
+void hmi_on_test_toggle(void) {
+   /* 首页"开始测试/停止测试"按钮(ptg, printh 0x24): 切换测试状态 */
+  g_test = !g_test;
+  if (g_test) {
+    g_test_t0 = HAL_GetTick();
+    g_sess_sum = 0; g_sess_cnt = 0;
+    g_sess_max = 0; g_sess_min = 0xFFFF;
+     /* 原在已失效的 hmi_on_pump_toggle() 内: 泵启动(即开始测试)时清零峰值/最小值 */
+    g_peak = 0.0f; g_min = 4294967.0f;
+  }
+  pump_set(g_test);        /* 泵随测试启停(未接硬件则以状态位同步) */
+  g_full_dirty = 1;    /* [L1] ptg 文案/圆点刷新交主循环(原在 ISR 内阻塞发送) */
+}
+
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+   /* USER CODE BEGIN Error_Handler_Debug */
+  __disable_irq();
+  while (1) { }
+   /* USER CODE END Error_Handler_Debug */
+}
+#ifdef USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+   /* USER CODE BEGIN 6 */
+  (void)file; (void)line;
+   /* USER CODE END 6 */
+}
+#endif  /* USE_FULL_ASSERT */
+
+/* ==== 诊断实现(放在文件末尾, 避免与任何既有注释/结构冲突) ==== */
+#if !HMI_DIAG
+#define DIAG_N 10
+static uint32_t s_dg_zw_n = 0;
+static uint32_t s_dg_lo_n = 0;
+static uint32_t s_dg_any = 0;           /* 收到的总字节数(含所有值) */
+static uint32_t s_dg_asc = 0;           /* ASCII 可打印(0x20~0x7E): 疑环回(MCU 指令文本) */
+static uint32_t s_dg_ff  = 0;           /* 0xFF: MCU 帧尾特征 */
+static uint32_t s_dg_oth = 0;           /* 其他(非 1A/非 ASCII/非 FF) */
+static uint32_t s_dg_dt[DIAG_N];
+static uint32_t s_dg_dti = 0;
+static uint32_t s_dg_last = 0;
+
+void hmi_diag_any(uint8_t b)
+{
+  (void)b;
+  s_dg_any++;
+   /* 判据必须互斥(0xFF >= 0x1A, 原写法让 s_dg_ff 永远进不到) */
+  if (b == 0xFFu)                s_dg_ff++;      /* MCU 帧尾 => 环回证据 */
+  else if (b >= 0x20u && b <= 0x7Eu) s_dg_asc++;   /* 可打印 ASCII */
+  else                            s_dg_oth++;
+}
+
+void hmi_diag_note(uint8_t b)
+{
+  uint32_t now = HAL_GetTick();
+  if (b == 0x1A) {
+    s_dg_zw_n++;
+    if (s_dg_last) s_dg_dt[s_dg_dti++ % DIAG_N] = now - s_dg_last;
+    s_dg_last = now;
+  } else if (b == 0x1B) {
+    s_dg_lo_n++;
+  }
+}
+
+void hmi_diag_show(void)
+{
+  char s[64];
+  int i, n;
+  uint32_t idx;
+  n = snprintf(s, sizeof(s), "E%lu F%lu O%lu Z%lu",
+               (unsigned long)s_dg_asc, (unsigned long)s_dg_ff,
+               (unsigned long)s_dg_oth, (unsigned long)s_dg_zw_n);
+#if 0
+    n = snprintf(s, sizeof(s), "A%lu Z%lu B%lu d=",
+               (unsigned long)s_dg_any, (unsigned long)s_dg_zw_n, (unsigned long)s_dg_lo_n);
+#endif
+  {
+    int base = n;               /* E/F/O/Z 部分长度, 供分隔符判断 */
+    idx = s_dg_dti;
+    for (i = (int)(DIAG_N - 4u); i < (int)DIAG_N; i++) {
+    uint32_t v = s_dg_dt[(idx + i) % DIAG_N];
+    if (!v) continue;
+      if (n < (int)sizeof(s) - 10)
+        n += snprintf(s + n, sizeof(s) - (size_t)n, "%s%lu", n > base ? "," : "", (unsigned long)v);
+    }
+    if (n == base) snprintf(s + n, sizeof(s) - (size_t)n, "-");
+  }
+  tjc_set_txt(OBJ_CAL_RS_F, s);
+}
+#endif

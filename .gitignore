@@ -1,0 +1,12 @@
+# 仅排除可再生的编译缓存与 GitHub 物理不可推送内容（>100MB 硬限）
+app/build/
+app/.dart_tool/
+app/android/.gradle/
+pc/node_modules/
+pc/src-tauri/target/
+esp32/build/
+sim/build/
+sim/.dart_tool/
+**/.dart_tool/
+**/.gradle/
+__pycache__/

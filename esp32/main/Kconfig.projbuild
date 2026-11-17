@@ -1,0 +1,31 @@
+# C4F7N bridge configuration
+menu "C4F7N Bridge"
+
+    config C4F7N_ADV_NAME
+        string "BLE advertising name"
+        default "C4F7N-0001"
+        help
+            Advertised as C4F7N-XXXX; XXXX should match device id param 0x0008.
+
+    config C4F7N_UART_NUM
+        int "Downstream UART number (to STM32)"
+        default 1
+        range 0 2
+
+    config C4F7N_UART_TX_PIN
+        int "UART TX pin (connect to STM32 PB7/RX)"
+        default 17
+
+    config C4F7N_UART_RX_PIN
+        int "UART RX pin (connect to STM32 PB6/TX)"
+        default 18
+
+    config C4F7N_UART_BAUD
+        int "UART baud rate"
+        default 115200
+
+    config C4F7N_UART_SILENCE_MS
+        int "UART silence alarm threshold (ms, 0 = disabled)"
+        default 20000
+
+endmenu

@@ -1,0 +1,14 @@
+name: c4f7n_protocol
+description: "C4F7N wireless protocol v1.0 codec (frozen 2026-11-14)."
+version: 0.0.1
+homepage:
+
+environment:
+  sdk: ^3.14.0
+
+dependencies:
+  crypto: ^3.0.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^6.0.0

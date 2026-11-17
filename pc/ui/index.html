@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>C4F7N 厂家产测工具</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>C4F7N 厂家产测工具</h1>
+    <div id="link-badge" class="badge off">未连接</div>
+  </header>
+
+  <main>
+    <!-- connection -->
+    <section class="card">
+      <h2>① 连接设备</h2>
+      <button id="scan-btn">扫描附近设备</button>
+      <span id="scan-status"></span>
+      <ul id="scan-list" class="list"></ul>
+      <div class="row">
+        <button id="diag-btn">蓝牙诊断</button>
+        <span id="diag-status"></span>
+      </div>
+      <pre id="conn-log" class="log" style="height:110px"></pre>
+    </section>
+
+    <!-- live -->
+    <section class="card" id="live-card">
+      <h2>② 实时数据</h2>
+      <div class="live">
+        <div class="big"><span id="conc">--</span><small> ppm</small></div>
+        <div class="stats">
+          <div>峰值 <b id="peak">--</b></div>
+          <div>电量 <b id="bat">--</b>%</div>
+          <div>泵 <b id="pump">--</b></div>
+          <div>报警 <b id="alarm">--</b></div>
+        </div>
+      </div>
+      <div class="row">
+        <button id="pump-btn">开泵</button>
+        <button id="mute-btn">静音</button>
+      </div>
+    </section>
+
+    <!-- factory -->
+    <section class="card" id="factory-card">
+      <h2>③ 厂家会话</h2>
+      <div class="row">
+        <input id="pwd" type="password" placeholder="厂家口令" />
+        <button id="auth-btn">认证</button>
+      </div>
+      <div id="auth-status"></div>
+      <div class="row">
+        <button class="fac" disabled>零点校准</button>
+        <button class="fac" disabled>自检</button>
+        <button class="fac" disabled>恢复出厂</button>
+      </div>
+      <pre id="fac-log" class="log"></pre>
+    </section>
+
+    <!-- prodtest -->
+    <section class="card">
+      <h2>④ 一键产测流程</h2>
+      <div class="row">
+        <input id="sn" placeholder="SN（8~24 字符）" />
+        <button id="sn-read-btn">读取 SN</button>
+      </div>
+      <ol id="flow-steps"></ol>
+      <div class="row">
+        <button id="flow-btn" disabled>开始一键产测</button>
+        <button id="ledger-btn">产测记录</button>
+        <button id="authhash-btn" class="fac" disabled>烧写认证口令哈希</button>
+      </div>
+      <pre id="flow-log" class="log"></pre>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
