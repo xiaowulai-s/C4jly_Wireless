@@ -1,0 +1,1207 @@
+700 1204 1 0        
+16 Autodesk AutoCAD 20 ASM 225.1.0.65535 NT 24 Wed Oct 21 14:31:14 2026 
+1 9.999999999999999547e-07 1.000000000000000036e-10 
+body $-1 -1 $-1 $1 $-1 $2 #
+lump $-1 -1 $-1 $-1 $3 $0 #
+transform $-1 -1 1 0 0 0 1 0 0 0 1 0 0 4 1 no_rotate no_reflect no_shear #
+shell $-1 -1 $-1 $-1 $-1 $4 $-1 $1 #
+face $5 -1 $-1 $6 $7 $3 $-1 $8 forward single #
+color-adesk-attrib $-1 -1 $-1 $-1 $4 0 #
+face $9 -1 $-1 $10 $11 $3 $-1 $12 reversed single #
+loop $-1 -1 $-1 $-1 $13 $4 #
+plane-surface $-1 -1 $-1 15.5 13.5 -94 1 0 0 0 0 -1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $6 0 #
+face $14 -1 $-1 $15 $16 $3 $-1 $17 forward single #
+loop $-1 -1 $-1 $-1 $18 $6 #
+plane-surface $-1 -1 $-1 16 13.5 -91 0 0 1 1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $19 $20 $21 $22 reversed $7 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $10 0 #
+face $23 -1 $-1 $24 $25 $3 $-1 $26 forward single #
+loop $-1 -1 $-1 $-1 $27 $10 #
+plane-surface $-1 -1 $-1 16.5 13.5 -94 -1 0 0 0 0 1 forward_v I I I I #
+coedge $-1 -1 $-1 $28 $29 $30 $31 reversed $11 $-1 #
+coedge $-1 -1 $-1 $32 $13 $29 $33 forward $7 $-1 #
+coedge $-1 -1 $-1 $13 $32 $34 $35 reversed $7 $-1 #
+coedge $-1 -1 $-1 $36 $30 $13 $22 forward $37 $-1 #
+edge $38 -1 $-1 $39 19.25 $40 24.25 $21 $41 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $15 0 #
+face $42 -1 $-1 $43 $44 $3 $-1 $45 reversed single #
+loop $-1 -1 $-1 $-1 $46 $15 #
+plane-surface $-1 -1 $-1 0 12 -52 0 -1 0 0 0 -1 forward_v I I I I #
+coedge $-1 -1 $-1 $47 $48 $49 $50 reversed $16 $-1 #
+coedge $-1 -1 $-1 $51 $18 $48 $52 reversed $11 $-1 #
+coedge $-1 -1 $-1 $18 $51 $19 $33 reversed $11 $-1 #
+coedge $-1 -1 $-1 $21 $49 $18 $31 forward $37 $-1 #
+edge $53 -1 $-1 $54 -8.5 $39 -7.5 $30 $55 forward @7 unknown #
+coedge $-1 -1 $-1 $20 $19 $46 $56 reversed $7 $-1 #
+edge $57 -1 $-1 $39 -1.5 $58 1.5 $19 $59 forward @7 unknown #
+coedge $-1 -1 $-1 $60 $61 $20 $35 forward $62 $-1 #
+edge $63 -1 $-1 $40 -8.25 $64 -5.25 $34 $65 forward @7 unknown #
+coedge $-1 -1 $-1 $66 $21 $61 $67 reversed $37 $-1 #
+loop $-1 -1 $-1 $-1 $21 $68 #
+color-adesk-attrib $-1 -1 $-1 $-1 $22 0 #
+vertex $-1 -1 $-1 $31 $69 #
+vertex $-1 -1 $-1 $22 $70 #
+straight-curve $-1 -1 $-1 15.5 15 -71.75 0 0 -1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $24 0 #
+face $71 -1 $-1 $72 $62 $3 $-1 $45 reversed single #
+loop $-1 -1 $-1 $-1 $73 $24 #
+plane-surface $-1 -1 $-1 0 0 -96 0 0 1 1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $74 $75 $32 $56 forward $25 $-1 #
+coedge $-1 -1 $-1 $76 $27 $73 $77 reversed $16 $-1 #
+coedge $-1 -1 $-1 $27 $76 $28 $52 forward $16 $-1 #
+coedge $-1 -1 $-1 $30 $78 $27 $50 forward $37 $-1 #
+edge $79 -1 $-1 $80 -24.25 $54 -19.25 $49 $81 forward @7 unknown #
+coedge $-1 -1 $-1 $29 $28 $74 $82 reversed $11 $-1 #
+edge $83 -1 $-1 $84 -1.5 $54 1.5 $48 $85 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $31 0 #
+vertex $-1 -1 $-1 $31 $86 #
+straight-curve $-1 -1 $-1 8 15 -91 -1 0 0 I I #
+edge $87 -1 $-1 $64 -23 $58 -18 $46 $88 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $33 0 #
+vertex $-1 -1 $-1 $82 $89 #
+straight-curve $-1 -1 $-1 15.5 13.5 -91 0 -1 0 I I #
+coedge $-1 -1 $-1 $90 $34 $75 $91 forward $62 $-1 #
+coedge $-1 -1 $-1 $34 $90 $36 $67 forward $62 $-1 #
+loop $-1 -1 $-1 $-1 $34 $43 #
+color-adesk-attrib $-1 -1 $-1 $-1 $35 0 #
+vertex $-1 -1 $-1 $91 $92 #
+straight-curve $-1 -1 $-1 15.5 6.75 -96 0 -1 0 I I #
+coedge $-1 -1 $-1 $93 $36 $94 $95 forward $37 $-1 #
+edge $96 -1 $-1 $97 4.5 $40 15.5 $36 $98 forward @7 unknown #
+face $99 -1 $-1 $100 $37 $3 $-1 $101 reversed single #
+point $-1 -1 $-1 15.5 15 -91 #
+point $-1 -1 $-1 15.5 15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $43 0 #
+face $102 -1 $-1 $103 $104 $3 $-1 $105 forward single #
+coedge $-1 -1 $-1 $106 $107 $47 $77 forward $44 $-1 #
+coedge $-1 -1 $-1 $108 $46 $51 $82 forward $25 $-1 #
+coedge $-1 -1 $-1 $46 $109 $60 $91 reversed $25 $-1 #
+coedge $-1 -1 $-1 $48 $47 $108 $110 reversed $16 $-1 #
+edge $111 -1 $-1 $112 5.25 $80 8.25 $73 $113 forward @7 unknown #
+coedge $-1 -1 $-1 $49 $114 $106 $115 reversed $37 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $50 0 #
+vertex $-1 -1 $-1 $115 $116 #
+straight-curve $-1 -1 $-1 16.5 15 -71.75 0 0 1 I I #
+edge $117 -1 $-1 $58 7.5 $84 8.5 $74 $118 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $52 0 #
+vertex $-1 -1 $-1 $82 $119 #
+straight-curve $-1 -1 $-1 16.5 13.5 -91 0 1 0 I I #
+point $-1 -1 $-1 16.5 15 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $56 0 #
+straight-curve $-1 -1 $-1 15.5 12 -73 -0 0 1 I I #
+point $-1 -1 $-1 15.5 12 -91 #
+coedge $-1 -1 $-1 $61 $60 $120 $121 forward $62 $-1 #
+edge $122 -1 $-1 $64 -15.5 $123 -4.5 $60 $124 forward @7 unknown #
+point $-1 -1 $-1 15.5 12 -96 #
+coedge $-1 -1 $-1 $125 $66 $126 $127 forward $37 $-1 #
+coedge $-1 -1 $-1 $120 $128 $66 $95 reversed $129 $-1 #
+edge $130 -1 $-1 $97 -24.25 $131 -19.25 $66 $132 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $67 0 #
+vertex $-1 -1 $-1 $67 $133 #
+straight-curve $-1 -1 $-1 0 15 -96 1 0 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $68 0 #
+face $134 -1 $-1 $135 $136 $3 $-1 $137 forward single #
+plane-surface $-1 -1 $-1 0 15 -49.5 0 -1 0 0 0 -1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $72 0 #
+face $138 -1 $-1 $139 $140 $3 $-1 $141 reversed single #
+loop $-1 -1 $-1 $-1 $142 $72 #
+plane-surface $-1 -1 $-1 15.5 -13.5 -94 1 0 0 0 0 -1 forward_v I I I I #
+coedge $-1 -1 $-1 $143 $73 $78 $115 forward $44 $-1 #
+coedge $-1 -1 $-1 $73 $144 $145 $146 forward $44 $-1 #
+coedge $-1 -1 $-1 $145 $74 $76 $110 forward $25 $-1 #
+coedge $-1 -1 $-1 $75 $147 $148 $149 forward $25 $-1 #
+edge $150 -1 $-1 $84 18 $112 23 $108 $151 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $77 0 #
+vertex $-1 -1 $-1 $77 $152 #
+straight-curve $-1 -1 $-1 16.5 6.75 -96 0 1 -0 I I #
+coedge $-1 -1 $-1 $78 $153 $154 $155 forward $37 $-1 #
+edge $156 -1 $-1 $80 16.5 $157 25 $78 $98 forward @7 unknown #
+point $-1 -1 $-1 16.5 15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $82 0 #
+straight-curve $-1 -1 $-1 8 12 -91 1 0 -0 I I #
+point $-1 -1 $-1 16.5 12 -91 #
+coedge $-1 -1 $-1 $148 $94 $90 $121 reversed $129 $-1 #
+edge $158 -1 $-1 $123 5.25 $97 8.25 $90 $159 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $91 0 #
+vertex $-1 -1 $-1 $121 $160 #
+straight-curve $-1 -1 $-1 0 12 -96 -1 0 0 I I #
+coedge $-1 -1 $-1 $161 $93 $162 $163 forward $37 $-1 #
+coedge $-1 -1 $-1 $164 $165 $93 $127 reversed $166 $-1 #
+edge $167 -1 $-1 $131 -2.5 $168 -1.5 $93 $169 forward @7 unknown #
+coedge $-1 -1 $-1 $94 $148 $164 $170 forward $129 $-1 #
+loop $-1 -1 $-1 $-1 $94 $171 #
+color-adesk-attrib $-1 -1 $-1 $-1 $95 0 #
+vertex $-1 -1 $-1 $127 $172 #
+straight-curve $-1 -1 $-1 4.5 15 -71.75 0 0 1 I I #
+point $-1 -1 $-1 4.5 15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $100 0 #
+face $173 -1 $-1 $174 $175 $3 $-1 $176 reversed single #
+loop $-1 -1 $-1 $177 $178 $100 #
+plane-surface $-1 -1 $-1 0 0 4 0 0 1 1 0 0 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $103 0 #
+face $179 -1 $-1 $180 $181 $3 $-1 $182 forward single #
+loop $-1 -1 $-1 $-1 $183 $103 #
+plane-surface $-1 -1 $-1 16 -13.5 -91 0 0 1 1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $184 $185 $186 $187 reversed $104 $-1 #
+coedge $-1 -1 $-1 $188 $106 $189 $190 forward $44 $-1 #
+coedge $-1 -1 $-1 $107 $191 $192 $193 forward $44 $-1 #
+coedge $-1 -1 $-1 $194 $108 $107 $146 reversed $25 $-1 #
+edge $195 -1 $-1 $196 -22 $112 -16.5 $107 $124 forward @7 unknown #
+coedge $-1 -1 $-1 $109 $197 $198 $199 forward $25 $-1 #
+coedge $-1 -1 $-1 $128 $120 $109 $149 reversed $129 $-1 #
+edge $200 -1 $-1 $201 18 $123 23 $109 $202 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $110 0 #
+straight-curve $-1 -1 $-1 16.5 12 -73 -0 -0 -1 I I #
+point $-1 -1 $-1 16.5 12 -96 #
+coedge $-1 -1 $-1 $114 $203 $204 $205 reversed $37 $-1 #
+coedge $-1 -1 $-1 $206 $189 $114 $155 reversed $207 $-1 #
+edge $208 -1 $-1 $209 -45.5 $157 46.5 $154 $210 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $115 0 #
+vertex $-1 -1 $-1 $190 $211 #
+color-adesk-attrib $-1 -1 $-1 $-1 $121 0 #
+straight-curve $-1 -1 $-1 4.5 6.75 -96 0 1 -0 I I #
+point $-1 -1 $-1 4.5 12 -96 #
+coedge $-1 -1 $-1 $212 $125 $213 $214 reversed $37 $-1 #
+coedge $-1 -1 $-1 $215 $216 $125 $163 reversed $217 $-1 #
+edge $218 -1 $-1 $168 19.25 $219 24.25 $125 $220 forward @7 unknown #
+coedge $-1 -1 $-1 $198 $126 $128 $170 reversed $166 $-1 #
+coedge $-1 -1 $-1 $126 $198 $215 $221 reversed $166 $-1 #
+loop $-1 -1 $-1 $-1 $126 $222 #
+color-adesk-attrib $-1 -1 $-1 $-1 $127 0 #
+vertex $-1 -1 $-1 $127 $223 #
+straight-curve $-1 -1 $-1 2 15 -91 -1 0 0 I I #
+edge $224 -1 $-1 $201 -1.5 $131 1.5 $128 $225 forward @7 unknown #
+face $226 -1 $-1 $227 $129 $3 $-1 $228 forward single #
+point $-1 -1 $-1 4.5 15 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $135 0 #
+face $229 -1 $-1 $230 $231 $3 $-1 $232 reversed single #
+loop $-1 -1 $-1 $-1 $233 $135 #
+plane-surface $-1 -1 $-1 0 -20 0 0 1 -0 -0 0 1 forward_v I I I I #
+loop $-1 -1 $-1 $234 $235 $100 #
+coedge $-1 -1 $-1 $178 $178 $236 $237 forward $136 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $139 0 #
+face $238 -1 $-1 $239 $240 $3 $-1 $241 reversed single #
+loop $-1 -1 $-1 $-1 $242 $139 #
+plane-surface $-1 -1 $-1 16.5 -13.5 -94 -1 0 0 0 0 1 forward_v I I I I #
+coedge $-1 -1 $-1 $243 $244 $245 $246 reversed $140 $-1 #
+coedge $-1 -1 $-1 $247 $142 $244 $248 forward $104 $-1 #
+coedge $-1 -1 $-1 $142 $247 $249 $250 reversed $104 $-1 #
+coedge $-1 -1 $-1 $251 $245 $142 $187 forward $252 $-1 #
+edge $253 -1 $-1 $254 18 $255 23 $186 $256 forward @7 unknown #
+coedge $-1 -1 $-1 $257 $143 $258 $259 forward $44 $-1 #
+coedge $-1 -1 $-1 $154 $260 $143 $190 reversed $207 $-1 #
+edge $261 -1 $-1 $157 -15 $262 15 $189 $263 forward @7 unknown #
+coedge $-1 -1 $-1 $144 $257 $264 $265 forward $44 $-1 #
+coedge $-1 -1 $-1 $266 $267 $144 $193 reversed $268 $-1 #
+edge $269 -1 $-1 $270 -12 $196 12 $144 $271 forward @7 unknown #
+coedge $-1 -1 $-1 $272 $145 $267 $273 reversed $25 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $146 0 #
+vertex $-1 -1 $-1 $146 $274 #
+coedge $-1 -1 $-1 $147 $275 $276 $277 forward $25 $-1 #
+coedge $-1 -1 $-1 $165 $164 $147 $199 reversed $166 $-1 #
+edge $278 -1 $-1 $279 1.5 $201 2.5 $147 $280 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $149 0 #
+vertex $-1 -1 $-1 $199 $281 #
+straight-curve $-1 -1 $-1 4.5 12 -73 -0 -0 -1 I I #
+coedge $-1 -1 $-1 $153 $282 $283 $284 reversed $37 $-1 #
+coedge $-1 -1 $-1 $285 $286 $153 $205 forward $287 $-1 #
+edge $288 -1 $-1 $209 -25 $289 25 $204 $290 forward @7 unknown #
+coedge $-1 -1 $-1 $291 $154 $286 $292 reversed $207 $-1 #
+loop $-1 -1 $-1 $-1 $291 $293 #
+color-adesk-attrib $-1 -1 $-1 $-1 $155 0 #
+vertex $-1 -1 $-1 $205 $294 #
+straight-curve $-1 -1 $-1 25 15 -49.5 0 0 -1 I I #
+point $-1 -1 $-1 25 15 -96 #
+coedge $-1 -1 $-1 $295 $161 $296 $297 forward $37 $-1 #
+coedge $-1 -1 $-1 $298 $299 $161 $214 forward $300 $-1 #
+edge $301 -1 $-1 $302 -6 $219 3.5 $161 $98 forward @7 unknown #
+coedge $-1 -1 $-1 $276 $162 $165 $221 forward $217 $-1 #
+coedge $-1 -1 $-1 $162 $276 $298 $303 reversed $217 $-1 #
+loop $-1 -1 $-1 $-1 $162 $304 #
+color-adesk-attrib $-1 -1 $-1 $-1 $163 0 #
+vertex $-1 -1 $-1 $163 $305 #
+straight-curve $-1 -1 $-1 3.5 15 -71.75 0 0 -1 I I #
+edge $306 -1 $-1 $168 -1.5 $279 1.5 $215 $307 forward @7 unknown #
+face $308 -1 $-1 $171 $166 $3 $-1 $309 reversed single #
+point $-1 -1 $-1 3.5 15 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $170 0 #
+straight-curve $-1 -1 $-1 4.5 13.5 -91 0 1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $171 0 #
+face $310 -1 $-1 $311 $300 $3 $-1 $45 reversed single #
+plane-surface $-1 -1 $-1 4.5 13.5 -94 -1 0 0 0 0 1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $174 0 #
+face $312 -1 $-1 $313 $314 $3 $-1 $315 reversed single #
+loop $-1 -1 $-1 $-1 $316 $174 #
+plane-surface $-1 -1 $-1 -30 0 0 1 0 0 0 0 -1 forward_v I I I I #
+coedge $-1 -1 $-1 $317 $318 $319 $320 forward $175 $-1 #
+loop $-1 -1 $-1 $321 $322 $100 #
+coedge $-1 -1 $-1 $235 $235 $323 $324 forward $177 $-1 #
+coedge $-1 -1 $-1 $236 $236 $178 $237 reversed $325 $-1 #
+edge $326 -1 $-1 $327 0 $327 6.283185307179586232 $178 $328 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $180 0 #
+face $329 -1 $-1 $304 $330 $3 $-1 $45 reversed single #
+loop $-1 -1 $-1 $-1 $331 $180 #
+plane-surface $-1 -1 $-1 0 -15 -49.5 0 1 0 0 0 1 forward_v I I I I #
+coedge $-1 -1 $-1 $332 $333 $334 $335 reversed $181 $-1 #
+coedge $-1 -1 $-1 $336 $183 $333 $337 reversed $140 $-1 #
+coedge $-1 -1 $-1 $183 $336 $184 $248 reversed $140 $-1 #
+coedge $-1 -1 $-1 $186 $334 $183 $246 forward $252 $-1 #
+edge $338 -1 $-1 $339 -8.5 $254 -7.5 $245 $340 forward @7 unknown #
+coedge $-1 -1 $-1 $185 $184 $331 $341 reversed $104 $-1 #
+edge $342 -1 $-1 $254 -1.5 $343 1.5 $184 $344 forward @7 unknown #
+coedge $-1 -1 $-1 $345 $346 $185 $250 forward $330 $-1 #
+edge $347 -1 $-1 $255 5.25 $348 8.25 $249 $349 forward @7 unknown #
+coedge $-1 -1 $-1 $350 $186 $346 $351 reversed $252 $-1 #
+loop $-1 -1 $-1 $-1 $186 $352 #
+color-adesk-attrib $-1 -1 $-1 $-1 $187 0 #
+vertex $-1 -1 $-1 $246 $353 #
+vertex $-1 -1 $-1 $187 $354 #
+straight-curve $-1 -1 $-1 15.5 -12 -73 0 0 -1 I I #
+coedge $-1 -1 $-1 $191 $188 $332 $355 forward $44 $-1 #
+coedge $-1 -1 $-1 $356 $357 $188 $259 reversed $240 $-1 #
+edge $358 -1 $-1 $262 -25 $359 -16.5 $258 $360 forward @7 unknown #
+coedge $-1 -1 $-1 $189 $361 $356 $362 forward $207 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $190 0 #
+vertex $-1 -1 $-1 $362 $363 #
+straight-curve $-1 -1 $-1 25 0 -96 0 -1 0 I I #
+coedge $-1 -1 $-1 $334 $364 $191 $265 reversed $252 $-1 #
+edge $365 -1 $-1 $366 16.5 $270 22 $191 $367 forward @7 unknown #
+coedge $-1 -1 $-1 $368 $192 $364 $369 reversed $268 $-1 #
+coedge $-1 -1 $-1 $192 $368 $194 $273 forward $268 $-1 #
+loop $-1 -1 $-1 $-1 $192 $370 #
+color-adesk-attrib $-1 -1 $-1 $-1 $193 0 #
+vertex $-1 -1 $-1 $265 $371 #
+straight-curve $-1 -1 $-1 22 0 -96 0 1 -0 I I #
+coedge $-1 -1 $-1 $372 $194 $373 $374 forward $25 $-1 #
+edge $375 -1 $-1 $376 -45 $196 44 $267 $377 forward @7 unknown #
+point $-1 -1 $-1 22 12 -96 #
+coedge $-1 -1 $-1 $197 $378 $379 $380 reversed $25 $-1 #
+coedge $-1 -1 $-1 $216 $215 $197 $277 reversed $217 $-1 #
+edge $381 -1 $-1 $382 -23 $279 -18 $197 $383 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $199 0 #
+vertex $-1 -1 $-1 $199 $384 #
+straight-curve $-1 -1 $-1 2 12 -91 1 0 -0 I I #
+point $-1 -1 $-1 4.5 12 -91 #
+coedge $-1 -1 $-1 $203 $385 $386 $387 reversed $37 $-1 #
+coedge $-1 -1 $-1 $388 $389 $203 $284 forward $390 $-1 #
+edge $391 -1 $-1 $289 -45.5 $392 46.5 $203 $393 forward @7 unknown #
+coedge $-1 -1 $-1 $394 $204 $389 $395 forward $287 $-1 #
+coedge $-1 -1 $-1 $204 $396 $206 $292 forward $287 $-1 #
+loop $-1 -1 $-1 $-1 $394 $397 #
+color-adesk-attrib $-1 -1 $-1 $-1 $205 0 #
+vertex $-1 -1 $-1 $395 $398 #
+straight-curve $-1 -1 $-1 0 15 -4 -1 0 0 I I #
+coedge $-1 -1 $-1 $399 $206 $400 $401 forward $207 $-1 #
+edge $402 -1 $-1 $403 2.5 $209 15 $286 $404 forward @7 unknown #
+face $405 -1 $-1 $406 $207 $3 $-1 $407 reversed single #
+point $-1 -1 $-1 25 15 -4 #
+coedge $-1 -1 $-1 $408 $212 $409 $410 forward $37 $-1 #
+coedge $-1 -1 $-1 $411 $412 $212 $297 reversed $413 $-1 #
+edge $414 -1 $-1 $302 -24.25 $415 -19.25 $212 $416 forward @7 unknown #
+coedge $-1 -1 $-1 $379 $213 $216 $303 forward $300 $-1 #
+coedge $-1 -1 $-1 $213 $379 $411 $417 forward $300 $-1 #
+loop $-1 -1 $-1 $-1 $298 $227 #
+color-adesk-attrib $-1 -1 $-1 $-1 $214 0 #
+vertex $-1 -1 $-1 $214 $418 #
+edge $419 -1 $-1 $219 -8.25 $382 -5.25 $298 $420 forward @7 unknown #
+face $421 -1 $-1 $222 $217 $3 $-1 $422 forward single #
+point $-1 -1 $-1 3.5 15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $221 0 #
+straight-curve $-1 -1 $-1 3.5 13.5 -91 0 -1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $222 0 #
+plane-surface $-1 -1 $-1 4 13.5 -91 0 0 1 1 0 0 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $227 0 #
+face $423 -1 $-1 $424 $425 $3 $-1 $426 forward single #
+color-adesk-attrib $-1 -1 $-1 $-1 $230 0 #
+face $427 -1 $-1 $-1 $428 $3 $-1 $429 reversed single #
+loop $-1 -1 $-1 $-1 $430 $230 #
+plane-surface $-1 -1 $-1 0 20 0 0 -1 0 0 0 -1 forward_v I I I I #
+coedge $-1 -1 $-1 $431 $432 $433 $434 forward $231 $-1 #
+coedge $-1 -1 $-1 $435 $233 $436 $437 reversed $175 $-1 #
+coedge $-1 -1 $-1 $233 $435 $438 $439 reversed $175 $-1 #
+coedge $-1 -1 $-1 $432 $431 $233 $320 reversed $231 $-1 #
+edge $440 -1 $-1 $441 -4 $442 4 $319 $443 forward @7 unknown #
+loop $-1 -1 $-1 $444 $445 $100 #
+coedge $-1 -1 $-1 $322 $322 $446 $447 forward $234 $-1 #
+coedge $-1 -1 $-1 $323 $323 $235 $324 reversed $448 $-1 #
+edge $449 -1 $-1 $450 0 $450 6.283185307179586232 $235 $451 forward @7 unknown #
+loop $-1 -1 $-1 $-1 $236 $452 #
+color-adesk-attrib $-1 -1 $-1 $-1 $237 0 #
+vertex $-1 -1 $-1 $237 $453 #
+ellipse-curve $-1 -1 $-1 -10 0 4 -0 -0 -1 3.5 0 0 1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $239 0 #
+loop $-1 -1 $-1 $-1 $249 $239 #
+coedge $-1 -1 $-1 $454 $455 $247 $341 forward $240 $-1 #
+coedge $-1 -1 $-1 $456 $242 $257 $355 reversed $181 $-1 #
+coedge $-1 -1 $-1 $242 $456 $243 $337 forward $181 $-1 #
+coedge $-1 -1 $-1 $245 $264 $242 $335 forward $252 $-1 #
+edge $457 -1 $-1 $366 -23 $339 -18 $334 $458 forward @7 unknown #
+coedge $-1 -1 $-1 $244 $243 $454 $459 reversed $140 $-1 #
+edge $460 -1 $-1 $461 -1.5 $339 1.5 $333 $462 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $246 0 #
+vertex $-1 -1 $-1 $246 $463 #
+straight-curve $-1 -1 $-1 8 -12 -91 -1 0 0 I I #
+edge $464 -1 $-1 $348 -24.25 $343 -19.25 $331 $465 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $248 0 #
+vertex $-1 -1 $-1 $459 $466 #
+straight-curve $-1 -1 $-1 15.5 -13.5 -91 0 -1 0 I I #
+coedge $-1 -1 $-1 $467 $249 $455 $468 forward $330 $-1 #
+coedge $-1 -1 $-1 $249 $467 $251 $351 forward $330 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $250 0 #
+vertex $-1 -1 $-1 $468 $469 #
+straight-curve $-1 -1 $-1 15.5 -6.75 -96 0 -1 0 I I #
+coedge $-1 -1 $-1 $470 $251 $471 $472 forward $252 $-1 #
+edge $473 -1 $-1 $474 4.5 $255 15.5 $346 $367 forward @7 unknown #
+face $475 -1 $-1 $452 $252 $3 $-1 $476 forward single #
+point $-1 -1 $-1 15.5 -12 -91 #
+point $-1 -1 $-1 15.5 -12 -96 #
+edge $477 -1 $-1 $359 -8.25 $366 -5.25 $257 $478 forward @7 unknown #
+coedge $-1 -1 $-1 $479 $258 $260 $362 reversed $240 $-1 #
+coedge $-1 -1 $-1 $258 $454 $456 $480 forward $240 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $259 0 #
+vertex $-1 -1 $-1 $355 $481 #
+straight-curve $-1 -1 $-1 0 -15 -96 -1 0 0 I I #
+coedge $-1 -1 $-1 $260 $482 $483 $484 reversed $207 $-1 #
+edge $485 -1 $-1 $486 -45.5 $262 46.5 $260 $487 forward @7 unknown #
+point $-1 -1 $-1 25 -15 -96 #
+coedge $-1 -1 $-1 $264 $488 $266 $369 forward $252 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $265 0 #
+vertex $-1 -1 $-1 $265 $489 #
+straight-curve $-1 -1 $-1 0 -12 -96 1 0 0 I I #
+coedge $-1 -1 $-1 $267 $266 $490 $491 forward $268 $-1 #
+edge $492 -1 $-1 $493 -45 $270 44 $266 $494 forward @7 unknown #
+face $495 -1 $-1 $496 $268 $3 $-1 $497 forward single #
+point $-1 -1 $-1 22 -12 -96 #
+coedge $-1 -1 $-1 $498 $272 $499 $500 forward $25 $-1 #
+coedge $-1 -1 $-1 $490 $501 $272 $374 reversed $502 $-1 #
+edge $503 -1 $-1 $376 -22 $504 22 $272 $505 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $273 0 #
+vertex $-1 -1 $-1 $491 $506 #
+straight-curve $-1 -1 $-1 22 12 -52 0 0 -1 I I #
+coedge $-1 -1 $-1 $275 $507 $508 $509 forward $25 $-1 #
+coedge $-1 -1 $-1 $299 $298 $275 $380 forward $300 $-1 #
+edge $510 -1 $-1 $382 -3.5 $511 6 $379 $124 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $277 0 #
+vertex $-1 -1 $-1 $380 $512 #
+straight-curve $-1 -1 $-1 3.5 12 -73 -0 0 1 I I #
+point $-1 -1 $-1 3.5 12 -91 #
+coedge $-1 -1 $-1 $282 $513 $514 $515 forward $37 $-1 #
+coedge $-1 -1 $-1 $516 $517 $282 $387 forward $518 $-1 #
+edge $519 -1 $-1 $392 -25 $520 -14 $282 $98 forward @7 unknown #
+coedge $-1 -1 $-1 $521 $283 $517 $522 reversed $390 $-1 #
+coedge $-1 -1 $-1 $283 $523 $285 $395 reversed $390 $-1 #
+loop $-1 -1 $-1 $-1 $523 $524 #
+color-adesk-attrib $-1 -1 $-1 $-1 $284 0 #
+vertex $-1 -1 $-1 $387 $525 #
+straight-curve $-1 -1 $-1 -25 15 -49.5 0 0 -1 I I #
+coedge $-1 -1 $-1 $526 $285 $527 $528 forward $287 $-1 #
+edge $529 -1 $-1 $289 -15 $530 -2.5 $285 $531 forward @7 unknown #
+coedge $-1 -1 $-1 $286 $483 $532 $533 forward $287 $-1 #
+face $534 -1 $-1 $535 $536 $3 $-1 $537 reversed single #
+point $-1 -1 $-1 -25 15 -4 #
+coedge $-1 -1 $-1 $482 $291 $538 $539 forward $207 $-1 #
+coedge $-1 -1 $-1 $532 $540 $291 $401 reversed $541 $-1 #
+edge $542 -1 $-1 $403 3.5 $543 4.5 $291 $544 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $292 0 #
+vertex $-1 -1 $-1 $292 $545 #
+straight-curve $-1 -1 $-1 25 0 -4 0 1 -0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $293 0 #
+face $546 -1 $-1 $547 $548 $3 $-1 $549 forward single #
+plane-surface $-1 -1 $-1 25 0 -49.5 -1 0 0 0 0 1 forward_v I I I I #
+coedge $-1 -1 $-1 $550 $295 $551 $552 forward $37 $-1 #
+coedge $-1 -1 $-1 $553 $554 $295 $410 reversed $555 $-1 #
+edge $556 -1 $-1 $415 2.75 $557 3.75 $295 $558 forward @7 unknown #
+coedge $-1 -1 $-1 $508 $296 $299 $417 reversed $413 $-1 #
+coedge $-1 -1 $-1 $296 $508 $553 $559 forward $413 $-1 #
+loop $-1 -1 $-1 $-1 $296 $560 #
+color-adesk-attrib $-1 -1 $-1 $-1 $297 0 #
+vertex $-1 -1 $-1 $410 $561 #
+straight-curve $-1 -1 $-1 -6 15 -71.75 0 0 1 I I #
+edge $562 -1 $-1 $511 5.25 $302 8.25 $299 $563 forward @7 unknown #
+point $-1 -1 $-1 -6 15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $303 0 #
+straight-curve $-1 -1 $-1 3.5 6.75 -96 0 -1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $304 0 #
+plane-surface $-1 -1 $-1 3.5 13.5 -94 1 0 0 0 0 -1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $311 0 #
+face $564 -1 $-1 $565 $566 $3 $-1 $567 reversed single #
+loop $-1 -1 $-1 $-1 $568 $311 #
+plane-surface $-1 -1 $-1 3.5 -13.5 -94 1 0 0 0 0 -1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $313 0 #
+loop $-1 -1 $-1 $-1 $569 $313 #
+plane-surface $-1 -1 $-1 30 0 0 -1 0 0 0 -0 1 forward_v I I I I #
+coedge $-1 -1 $-1 $570 $571 $572 $573 forward $314 $-1 #
+coedge $-1 -1 $-1 $319 $316 $574 $575 reversed $231 $-1 #
+coedge $-1 -1 $-1 $316 $319 $576 $577 reversed $231 $-1 #
+coedge $-1 -1 $-1 $571 $570 $316 $434 reversed $314 $-1 #
+edge $578 -1 $-1 $579 -4 $580 4 $433 $581 forward @7 unknown #
+coedge $-1 -1 $-1 $318 $317 $569 $582 reversed $175 $-1 #
+coedge $-1 -1 $-1 $574 $583 $317 $437 forward $536 $-1 #
+edge $584 -1 $-1 $585 -30 $442 30 $317 $586 forward @7 unknown #
+coedge $-1 -1 $-1 $587 $576 $318 $439 forward $444 $-1 #
+edge $588 -1 $-1 $441 -30 $589 30 $318 $590 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $320 0 #
+vertex $-1 -1 $-1 $577 $591 #
+vertex $-1 -1 $-1 $575 $592 #
+straight-curve $-1 -1 $-1 -30 -20 0 0 0 -1 I I #
+loop $-1 -1 $-1 $-1 $587 $100 #
+coedge $-1 -1 $-1 $445 $445 $593 $594 forward $321 $-1 #
+coedge $-1 -1 $-1 $446 $446 $322 $447 reversed $595 $-1 #
+edge $596 -1 $-1 $597 0 $597 6.283185307179586232 $322 $598 forward @7 unknown #
+loop $-1 -1 $-1 $-1 $323 $599 #
+color-adesk-attrib $-1 -1 $-1 $-1 $324 0 #
+vertex $-1 -1 $-1 $324 $600 #
+ellipse-curve $-1 -1 $-1 10 0 4 -0 -0 -1 6 0 0 1 I I #
+face $601 -1 $-1 $599 $602 $3 $-1 $603 reversed single #
+point $-1 -1 $-1 -6.5 0 4 #
+coedge $-1 -1 $-1 $357 $331 $336 $459 forward $240 $-1 #
+coedge $-1 -1 $-1 $331 $604 $345 $468 reversed $240 $-1 #
+coedge $-1 -1 $-1 $333 $332 $357 $480 reversed $181 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $335 0 #
+straight-curve $-1 -1 $-1 16.5 -12 -73 0 -0 1 I I #
+edge $605 -1 $-1 $343 7.5 $461 8.5 $454 $606 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $337 0 #
+vertex $-1 -1 $-1 $459 $607 #
+straight-curve $-1 -1 $-1 16.5 -13.5 -91 0 1 0 I I #
+point $-1 -1 $-1 16.5 -12 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $341 0 #
+straight-curve $-1 -1 $-1 15.5 -15 -71.75 0 0 1 I I #
+point $-1 -1 $-1 15.5 -15 -91 #
+coedge $-1 -1 $-1 $346 $345 $608 $609 forward $330 $-1 #
+edge $610 -1 $-1 $348 -15.5 $611 -4.5 $455 $360 forward @7 unknown #
+point $-1 -1 $-1 15.5 -15 -96 #
+coedge $-1 -1 $-1 $612 $350 $613 $614 forward $252 $-1 #
+coedge $-1 -1 $-1 $608 $615 $350 $472 reversed $616 $-1 #
+edge $617 -1 $-1 $474 -23 $618 -18 $350 $619 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $351 0 #
+vertex $-1 -1 $-1 $351 $620 #
+color-adesk-attrib $-1 -1 $-1 $-1 $352 0 #
+plane-surface $-1 -1 $-1 0 -12 -52 0 1 0 0 0 1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $355 0 #
+straight-curve $-1 -1 $-1 16.5 -6.75 -96 0 1 -0 I I #
+coedge $-1 -1 $-1 $621 $356 $622 $623 reversed $240 $-1 #
+edge $624 -1 $-1 $461 19.25 $359 24.25 $357 $625 forward @7 unknown #
+point $-1 -1 $-1 16.5 -15 -96 #
+coedge $-1 -1 $-1 $361 $399 $626 $627 forward $207 $-1 #
+coedge $-1 -1 $-1 $396 $622 $361 $484 forward $287 $-1 #
+edge $628 -1 $-1 $486 -15 $629 -2.5 $483 $404 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $362 0 #
+vertex $-1 -1 $-1 $623 $630 #
+straight-curve $-1 -1 $-1 25 -15 -49.5 0 0 -1 I I #
+coedge $-1 -1 $-1 $364 $631 $632 $633 forward $252 $-1 #
+point $-1 -1 $-1 16.5 -12 -96 #
+coedge $-1 -1 $-1 $632 $373 $368 $491 reversed $502 $-1 #
+edge $634 -1 $-1 $493 -12 $376 12 $368 $635 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $369 0 #
+vertex $-1 -1 $-1 $491 $636 #
+straight-curve $-1 -1 $-1 22 -12 -52 0 0 -1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $370 0 #
+face $637 -1 $-1 $524 $518 $3 $-1 $45 reversed single #
+plane-surface $-1 -1 $-1 22 0 -52 -1 0 0 0 0 1 forward_v I I I I #
+coedge $-1 -1 $-1 $638 $372 $639 $640 reversed $25 $-1 #
+coedge $-1 -1 $-1 $641 $642 $372 $500 reversed $548 $-1 #
+edge $643 -1 $-1 $504 -45 $644 44 $372 $645 forward @7 unknown #
+coedge $-1 -1 $-1 $373 $632 $641 $646 reversed $502 $-1 #
+loop $-1 -1 $-1 $-1 $490 $547 #
+color-adesk-attrib $-1 -1 $-1 $-1 $374 0 #
+vertex $-1 -1 $-1 $374 $647 #
+straight-curve $-1 -1 $-1 0 12 -7 -1 0 0 I I #
+point $-1 -1 $-1 22 12 -7 #
+coedge $-1 -1 $-1 $378 $648 $649 $650 forward $25 $-1 #
+coedge $-1 -1 $-1 $412 $411 $378 $509 reversed $413 $-1 #
+edge $651 -1 $-1 $652 18 $511 23 $378 $653 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $380 0 #
+vertex $-1 -1 $-1 $417 $654 #
+point $-1 -1 $-1 3.5 12 -96 #
+coedge $-1 -1 $-1 $385 $655 $656 $657 forward $37 $-1 #
+coedge $-1 -1 $-1 $658 $659 $385 $515 reversed $660 $-1 #
+edge $661 -1 $-1 $662 19.25 $520 24.25 $385 $663 forward @7 unknown #
+coedge $-1 -1 $-1 $639 $386 $659 $664 forward $518 $-1 #
+coedge $-1 -1 $-1 $386 $665 $388 $522 forward $518 $-1 #
+loop $-1 -1 $-1 $-1 $516 $496 #
+color-adesk-attrib $-1 -1 $-1 $-1 $387 0 #
+vertex $-1 -1 $-1 $515 $666 #
+coedge $-1 -1 $-1 $667 $388 $621 $668 reversed $390 $-1 #
+edge $669 -1 $-1 $670 -15 $392 15 $388 $671 forward @7 unknown #
+coedge $-1 -1 $-1 $389 $672 $673 $674 forward $390 $-1 #
+face $675 -1 $-1 $68 $390 $3 $-1 $676 reversed single #
+point $-1 -1 $-1 -25 15 -96 #
+coedge $-1 -1 $-1 $622 $394 $667 $677 forward $287 $-1 #
+coedge $-1 -1 $-1 $673 $678 $394 $528 reversed $679 $-1 #
+edge $680 -1 $-1 $530 1.570796326794896558 $681 4.712388980384689674 $394 $682 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $395 0 #
+vertex $-1 -1 $-1 $528 $683 #
+straight-curve $-1 -1 $-1 -25 0 -4 0 -1 0 I I #
+coedge $-1 -1 $-1 $626 $400 $396 $533 reversed $541 $-1 #
+edge $684 -1 $-1 $629 -1.570796326794896558 $403 1.570796326794896558 $396 $685 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $397 0 #
+face $686 -1 $-1 $687 $688 $3 $-1 $689 reversed single #
+loop $-1 -1 $-1 $287 $583 $397 #
+plane-surface $-1 -1 $-1 0 0 -4 0 0 1 1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $690 $690 $399 $539 reversed $688 $-1 #
+edge $691 -1 $-1 $543 -2.5 $692 2.5 $399 $693 forward @7 unknown #
+coedge $-1 -1 $-1 $400 $626 $690 $694 forward $541 $-1 #
+loop $-1 -1 $-1 $-1 $400 $687 #
+color-adesk-attrib $-1 -1 $-1 $-1 $401 0 #
+vertex $-1 -1 $-1 $401 $695 #
+straight-curve $-1 -1 $-1 25 2.5 -0.5 -0 -0 -1 I I #
+point $-1 -1 $-1 25 2.5 -4 #
+color-adesk-attrib $-1 -1 $-1 $-1 $406 0 #
+face $696 -1 $-1 $370 $697 $3 $-1 $698 reversed single #
+loop $-1 -1 $-1 $-1 $642 $406 #
+plane-surface $-1 -1 $-1 -22 0 -52 1 0 0 0 0 -1 forward_v I I I I #
+coedge $-1 -1 $-1 $655 $408 $699 $700 reversed $37 $-1 #
+coedge $-1 -1 $-1 $701 $702 $408 $552 reversed $703 $-1 #
+edge $704 -1 $-1 $557 19.25 $705 24.25 $408 $706 forward @7 unknown #
+coedge $-1 -1 $-1 $649 $409 $412 $559 reversed $555 $-1 #
+coedge $-1 -1 $-1 $409 $649 $701 $707 reversed $555 $-1 #
+loop $-1 -1 $-1 $-1 $409 $708 #
+color-adesk-attrib $-1 -1 $-1 $-1 $410 0 #
+vertex $-1 -1 $-1 $410 $709 #
+straight-curve $-1 -1 $-1 -3.25 15 -91 -1 0 0 I I #
+edge $710 -1 $-1 $652 -1.5 $415 1.5 $412 $711 forward @7 unknown #
+face $712 -1 $-1 $713 $413 $3 $-1 $714 forward single #
+point $-1 -1 $-1 -6 15 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $417 0 #
+straight-curve $-1 -1 $-1 -6 6.75 -96 0 1 -0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $424 0 #
+face $715 -1 $-1 $716 $616 $3 $-1 $717 forward single #
+loop $-1 -1 $-1 $-1 $613 $424 #
+plane-surface $-1 -1 $-1 4 -13.5 -91 0 0 1 1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $718 $719 $612 $720 reversed $425 $-1 #
+coedge $-1 -1 $-1 $721 $722 $435 $582 forward $428 $-1 #
+coedge $-1 -1 $-1 $433 $430 $723 $724 reversed $314 $-1 #
+coedge $-1 -1 $-1 $430 $433 $725 $726 reversed $314 $-1 #
+coedge $-1 -1 $-1 $722 $721 $430 $573 reversed $428 $-1 #
+edge $727 -1 $-1 $728 -4 $729 4 $572 $730 forward @7 unknown #
+coedge $-1 -1 $-1 $723 $436 $431 $575 forward $536 $-1 #
+edge $731 -1 $-1 $442 -20 $580 20 $431 $732 forward @7 unknown #
+coedge $-1 -1 $-1 $438 $725 $432 $577 forward $444 $-1 #
+edge $733 -1 $-1 $579 -20 $441 20 $432 $734 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $434 0 #
+vertex $-1 -1 $-1 $726 $735 #
+vertex $-1 -1 $-1 $724 $736 #
+straight-curve $-1 -1 $-1 -30 20 0 0 0 -1 I I #
+edge $737 -1 $-1 $589 -4 $585 4 $569 $738 forward @7 unknown #
+coedge $-1 -1 $-1 $436 $723 $721 $739 forward $536 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $437 0 #
+vertex $-1 -1 $-1 $582 $740 #
+straight-curve $-1 -1 $-1 0 -20 -4 -1 0 0 I I #
+coedge $-1 -1 $-1 $725 $438 $722 $741 forward $444 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $439 0 #
+vertex $-1 -1 $-1 $741 $742 #
+straight-curve $-1 -1 $-1 0 -20 4 1 0 0 I I #
+point $-1 -1 $-1 -30 -20 4 #
+point $-1 -1 $-1 -30 -20 -4 #
+coedge $-1 -1 $-1 $593 $593 $445 $594 reversed $743 $-1 #
+edge $744 -1 $-1 $745 0 $745 6.283185307179586232 $445 $746 forward @7 unknown #
+loop $-1 -1 $-1 $-1 $446 $747 #
+color-adesk-attrib $-1 -1 $-1 $-1 $447 0 #
+vertex $-1 -1 $-1 $447 $748 #
+ellipse-curve $-1 -1 $-1 -25 0 4 -0 -0 -1 3 0 0 1 I I #
+face $749 -1 $-1 $747 $750 $3 $-1 $751 reversed single #
+point $-1 -1 $-1 16 0 4 #
+color-adesk-attrib $-1 -1 $-1 $-1 $452 0 #
+loop $-1 -1 $-1 $325 $752 $452 #
+cone-surface $-1 -1 $-1 -10 0 -1.5 0 0 1 3.5 0 0 1 I I 0 1 3.5 forward I I I I #
+coedge $-1 -1 $-1 $455 $753 $754 $755 forward $240 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $459 0 #
+straight-curve $-1 -1 $-1 8 -15 -91 1 0 0 I I #
+point $-1 -1 $-1 16.5 -15 -91 #
+coedge $-1 -1 $-1 $754 $471 $467 $609 reversed $616 $-1 #
+edge $756 -1 $-1 $611 -8.25 $474 -5.25 $467 $757 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $468 0 #
+vertex $-1 -1 $-1 $609 $758 #
+coedge $-1 -1 $-1 $759 $470 $568 $720 forward $252 $-1 #
+coedge $-1 -1 $-1 $760 $761 $470 $614 reversed $566 $-1 #
+edge $762 -1 $-1 $618 -2.5 $763 -1.5 $470 $764 forward @7 unknown #
+coedge $-1 -1 $-1 $471 $754 $760 $765 forward $616 $-1 #
+loop $-1 -1 $-1 $-1 $471 $565 #
+color-adesk-attrib $-1 -1 $-1 $-1 $472 0 #
+vertex $-1 -1 $-1 $614 $766 #
+straight-curve $-1 -1 $-1 4.5 -12 -73 0 -0 1 I I #
+point $-1 -1 $-1 4.5 -12 -96 #
+coedge $-1 -1 $-1 $767 $479 $521 $668 forward $240 $-1 #
+coedge $-1 -1 $-1 $483 $526 $479 $623 forward $287 $-1 #
+edge $768 -1 $-1 $769 -25 $486 25 $622 $770 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $480 0 #
+straight-curve $-1 -1 $-1 16.5 -15 -71.75 0 0 -1 I I #
+coedge $-1 -1 $-1 $540 $532 $482 $627 reversed $541 $-1 #
+edge $771 -1 $-1 $692 -4.5 $629 -3.5 $482 $772 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $484 0 #
+vertex $-1 -1 $-1 $627 $773 #
+point $-1 -1 $-1 25 -15 -4 #
+coedge $-1 -1 $-1 $488 $774 $775 $776 reversed $252 $-1 #
+coedge $-1 -1 $-1 $501 $490 $488 $633 reversed $502 $-1 #
+edge $777 -1 $-1 $778 -22 $493 22 $488 $779 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $491 0 #
+straight-curve $-1 -1 $-1 22 0 -7 0 1 0 I I #
+point $-1 -1 $-1 22 -12 -7 #
+color-adesk-attrib $-1 -1 $-1 $-1 $496 0 #
+coedge $-1 -1 $-1 $780 $498 $781 $782 forward $25 $-1 #
+coedge $-1 -1 $-1 $783 $516 $498 $640 forward $518 $-1 #
+edge $784 -1 $-1 $785 14 $644 22 $639 $124 forward @7 unknown #
+coedge $-1 -1 $-1 $775 $499 $501 $646 forward $548 $-1 #
+coedge $-1 -1 $-1 $499 $775 $783 $786 reversed $548 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $500 0 #
+vertex $-1 -1 $-1 $786 $787 #
+straight-curve $-1 -1 $-1 -22 12 -52 0 0 -1 I I #
+edge $788 -1 $-1 $504 -12 $778 12 $641 $789 forward @7 unknown #
+point $-1 -1 $-1 -22 12 -7 #
+coedge $-1 -1 $-1 $507 $790 $791 $792 forward $25 $-1 #
+coedge $-1 -1 $-1 $554 $553 $507 $650 reversed $555 $-1 #
+edge $793 -1 $-1 $794 -3.75 $652 -2.75 $507 $795 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $509 0 #
+vertex $-1 -1 $-1 $650 $796 #
+straight-curve $-1 -1 $-1 -6 12 -73 -0 -0 -1 I I #
+point $-1 -1 $-1 -6 12 -96 #
+coedge $-1 -1 $-1 $513 $550 $797 $798 forward $37 $-1 #
+coedge $-1 -1 $-1 $799 $800 $513 $657 reversed $801 $-1 #
+edge $802 -1 $-1 $803 6.25 $662 7.25 $513 $804 forward @7 unknown #
+coedge $-1 -1 $-1 $781 $514 $800 $805 forward $660 $-1 #
+coedge $-1 -1 $-1 $514 $781 $516 $664 reversed $660 $-1 #
+loop $-1 -1 $-1 $-1 $781 $806 #
+color-adesk-attrib $-1 -1 $-1 $-1 $515 0 #
+vertex $-1 -1 $-1 $657 $807 #
+straight-curve $-1 -1 $-1 -14 15 -71.75 0 0 -1 I I #
+edge $808 -1 $-1 $520 -8.25 $785 -5.25 $516 $809 forward @7 unknown #
+coedge $-1 -1 $-1 $517 $810 $767 $811 forward $518 $-1 #
+point $-1 -1 $-1 -14 15 -96 #
+coedge $-1 -1 $-1 $812 $521 $526 $677 reversed $390 $-1 #
+edge $813 -1 $-1 $769 -45.5 $670 46.5 $521 $814 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $522 0 #
+vertex $-1 -1 $-1 $522 $815 #
+straight-curve $-1 -1 $-1 -25 0 -96 0 1 0 I I #
+coedge $-1 -1 $-1 $523 $812 $816 $817 forward $390 $-1 #
+coedge $-1 -1 $-1 $818 $527 $523 $674 reversed $679 $-1 #
+edge $819 -1 $-1 $820 -4.5 $530 -3.5 $523 $821 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $524 0 #
+plane-surface $-1 -1 $-1 -25 0 -49.5 1 0 0 0 0 -1 forward_v I I I I #
+edge $822 -1 $-1 $681 2.5 $769 15 $526 $531 forward @7 unknown #
+coedge $-1 -1 $-1 $527 $818 $812 $823 reversed $679 $-1 #
+loop $-1 -1 $-1 $-1 $673 $824 #
+color-adesk-attrib $-1 -1 $-1 $-1 $528 0 #
+vertex $-1 -1 $-1 $677 $825 #
+ellipse-curve $-1 -1 $-1 -25 0 -4 0 0 1 2.5 0 0 1 I I #
+point $-1 -1 $-1 -25 2.5 -4 #
+color-adesk-attrib $-1 -1 $-1 $-1 $533 0 #
+ellipse-curve $-1 -1 $-1 25 0 -4 0 0 1 2.5 0 0 1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $535 0 #
+face $826 -1 $-1 $293 $827 $3 $-1 $828 reversed single #
+loop $-1 -1 $-1 $-1 $538 $535 #
+plane-surface $-1 -1 $-1 25 0 -5 0 0 -1 -1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $538 $538 $540 $694 reversed $688 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $539 0 #
+vertex $-1 -1 $-1 $627 $829 #
+straight-curve $-1 -1 $-1 25 0 -5 -0 -1 -0 I I #
+edge $830 -1 $-1 $692 1.570796326794896558 $543 4.712388980384689674 $690 $831 forward @7 unknown #
+point $-1 -1 $-1 25 2.5 -5 #
+color-adesk-attrib $-1 -1 $-1 $-1 $547 0 #
+loop $-1 -1 $-1 $832 $833 $547 #
+plane-surface $-1 -1 $-1 0 0 -7 0 0 1 1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $834 $835 $550 $700 forward $836 $-1 #
+edge $837 -1 $-1 $838 -13 $705 -7 $550 $98 forward @7 unknown #
+coedge $-1 -1 $-1 $791 $551 $554 $707 forward $703 $-1 #
+coedge $-1 -1 $-1 $551 $791 $834 $839 reversed $703 $-1 #
+loop $-1 -1 $-1 $-1 $551 $840 #
+color-adesk-attrib $-1 -1 $-1 $-1 $552 0 #
+vertex $-1 -1 $-1 $552 $841 #
+straight-curve $-1 -1 $-1 -7 15 -71.75 0 0 -1 I I #
+edge $842 -1 $-1 $557 -1.5 $794 1.5 $701 $843 forward @7 unknown #
+face $844 -1 $-1 $560 $555 $3 $-1 $845 reversed single #
+point $-1 -1 $-1 -7 15 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $559 0 #
+straight-curve $-1 -1 $-1 -6 13.5 -91 0 1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $560 0 #
+face $846 -1 $-1 $847 $836 $3 $-1 $45 reversed single #
+plane-surface $-1 -1 $-1 -6 13.5 -94 -1 0 0 0 0 1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $565 0 #
+face $848 -1 $-1 $840 $849 $3 $-1 $45 reversed single #
+plane-surface $-1 -1 $-1 4.5 -13.5 -94 -1 0 0 0 0 1 forward_v I I I I #
+coedge $-1 -1 $-1 $850 $568 $761 $851 forward $425 $-1 #
+coedge $-1 -1 $-1 $568 $850 $852 $853 reversed $425 $-1 #
+edge $854 -1 $-1 $763 18 $855 23 $612 $856 forward @7 unknown #
+coedge $-1 -1 $-1 $572 $569 $583 $739 reversed $428 $-1 #
+coedge $-1 -1 $-1 $569 $572 $587 $741 reversed $428 $-1 #
+coedge $-1 -1 $-1 $583 $574 $570 $724 forward $536 $-1 #
+edge $857 -1 $-1 $580 -30 $729 30 $570 $858 forward @7 unknown #
+coedge $-1 -1 $-1 $576 $587 $571 $726 forward $444 $-1 #
+edge $859 -1 $-1 $728 -30 $579 30 $571 $860 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $573 0 #
+vertex $-1 -1 $-1 $741 $861 #
+vertex $-1 -1 $-1 $739 $862 #
+straight-curve $-1 -1 $-1 30 20 0 0 0 -1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $575 0 #
+straight-curve $-1 -1 $-1 -30 0 -4 0 1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $577 0 #
+straight-curve $-1 -1 $-1 -30 0 4 0 -1 0 I I #
+point $-1 -1 $-1 -30 20 4 #
+point $-1 -1 $-1 -30 20 -4 #
+color-adesk-attrib $-1 -1 $-1 $-1 $582 0 #
+straight-curve $-1 -1 $-1 30 -20 0 0 0 -1 I I #
+edge $863 -1 $-1 $729 -20 $585 20 $721 $864 forward @7 unknown #
+point $-1 -1 $-1 30 -20 -4 #
+edge $865 -1 $-1 $589 -20 $728 20 $722 $866 forward @7 unknown #
+point $-1 -1 $-1 30 -20 4 #
+loop $-1 -1 $-1 $-1 $593 $867 #
+color-adesk-attrib $-1 -1 $-1 $-1 $594 0 #
+vertex $-1 -1 $-1 $594 $868 #
+ellipse-curve $-1 -1 $-1 25 0 4 -0 -0 -1 3 0 0 1 I I #
+face $869 -1 $-1 $870 $871 $3 $-1 $872 reversed single #
+point $-1 -1 $-1 -22 0 4 #
+color-adesk-attrib $-1 -1 $-1 $-1 $599 0 #
+loop $-1 -1 $-1 $448 $873 $599 #
+cone-surface $-1 -1 $-1 10 0 -1.5 0 0 1 6 0 0 1 I I 0 1 6 forward I I I I #
+coedge $-1 -1 $-1 $752 $752 $833 $874 reversed $602 $-1 #
+coedge $-1 -1 $-1 $604 $875 $876 $877 forward $240 $-1 #
+coedge $-1 -1 $-1 $615 $608 $604 $755 reversed $616 $-1 #
+edge $878 -1 $-1 $879 19.25 $611 24.25 $604 $880 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $609 0 #
+straight-curve $-1 -1 $-1 4.5 -6.75 -96 0 1 -0 I I #
+point $-1 -1 $-1 4.5 -15 -96 #
+coedge $-1 -1 $-1 $881 $612 $882 $883 reversed $252 $-1 #
+coedge $-1 -1 $-1 $876 $613 $615 $765 reversed $566 $-1 #
+coedge $-1 -1 $-1 $613 $876 $718 $851 reversed $566 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $614 0 #
+vertex $-1 -1 $-1 $614 $884 #
+straight-curve $-1 -1 $-1 2 -12 -91 -1 0 0 I I #
+edge $885 -1 $-1 $879 -1.5 $618 1.5 $615 $886 forward @7 unknown #
+point $-1 -1 $-1 4.5 -12 -91 #
+coedge $-1 -1 $-1 $887 $621 $665 $811 reversed $240 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $623 0 #
+vertex $-1 -1 $-1 $623 $888 #
+straight-curve $-1 -1 $-1 0 -15 -4 1 0 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $627 0 #
+straight-curve $-1 -1 $-1 25 -2.5 -0.5 0 0 1 I I #
+point $-1 -1 $-1 25 -2.5 -4 #
+coedge $-1 -1 $-1 $631 $889 $890 $891 reversed $252 $-1 #
+coedge $-1 -1 $-1 $642 $641 $631 $776 forward $548 $-1 #
+edge $892 -1 $-1 $778 -45 $893 44 $775 $894 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $633 0 #
+vertex $-1 -1 $-1 $646 $895 #
+straight-curve $-1 -1 $-1 0 -12 -7 1 0 0 I I #
+coedge $-1 -1 $-1 $896 $638 $897 $898 forward $25 $-1 #
+coedge $-1 -1 $-1 $659 $658 $638 $782 reversed $660 $-1 #
+edge $899 -1 $-1 $785 -23 $900 -18 $638 $901 forward @7 unknown #
+coedge $-1 -1 $-1 $890 $639 $642 $786 forward $518 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $640 0 #
+vertex $-1 -1 $-1 $640 $902 #
+edge $903 -1 $-1 $644 -12 $893 12 $783 $904 forward @7 unknown #
+point $-1 -1 $-1 -22 12 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $646 0 #
+straight-curve $-1 -1 $-1 -22 0 -7 0 -1 0 I I #
+coedge $-1 -1 $-1 $648 $896 $905 $906 reversed $25 $-1 #
+coedge $-1 -1 $-1 $702 $701 $648 $792 reversed $703 $-1 #
+edge $907 -1 $-1 $908 -23 $794 -18 $648 $909 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $650 0 #
+vertex $-1 -1 $-1 $650 $910 #
+straight-curve $-1 -1 $-1 -3.25 12 -91 1 0 -0 I I #
+point $-1 -1 $-1 -6 12 -91 #
+coedge $-1 -1 $-1 $911 $912 $655 $798 reversed $913 $-1 #
+edge $914 -1 $-1 $838 -24.25 $803 -19.25 $655 $915 forward @7 unknown #
+coedge $-1 -1 $-1 $897 $656 $912 $916 reversed $801 $-1 #
+coedge $-1 -1 $-1 $656 $897 $658 $805 reversed $801 $-1 #
+loop $-1 -1 $-1 $-1 $897 $917 #
+color-adesk-attrib $-1 -1 $-1 $-1 $657 0 #
+vertex $-1 -1 $-1 $657 $918 #
+straight-curve $-1 -1 $-1 -6.75 15 -91 -1 0 0 I I #
+edge $919 -1 $-1 $662 -1.5 $900 1.5 $658 $920 forward @7 unknown #
+face $921 -1 $-1 $922 $660 $3 $-1 $923 forward single #
+point $-1 -1 $-1 -14 15 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $664 0 #
+straight-curve $-1 -1 $-1 -14 6.75 -96 0 -1 0 I I #
+coedge $-1 -1 $-1 $665 $890 $924 $925 forward $518 $-1 #
+edge $926 -1 $-1 $927 14 $670 25 $767 $360 forward @7 unknown #
+coedge $-1 -1 $-1 $672 $667 $678 $823 forward $390 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $668 0 #
+straight-curve $-1 -1 $-1 -25 -15 -49.5 0 0 -1 I I #
+point $-1 -1 $-1 -25 -15 -96 #
+coedge $-1 -1 $-1 $928 $928 $672 $817 reversed $929 $-1 #
+edge $930 -1 $-1 $931 -2.5 $820 2.5 $672 $932 forward @7 unknown #
+coedge $-1 -1 $-1 $678 $673 $928 $933 forward $679 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $674 0 #
+vertex $-1 -1 $-1 $674 $934 #
+straight-curve $-1 -1 $-1 -25 2.5 -0.5 0 0 1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $677 0 #
+edge $935 -1 $-1 $681 3.5 $931 4.5 $812 $936 forward @7 unknown #
+face $937 -1 $-1 $938 $939 $3 $-1 $940 reversed single #
+point $-1 -1 $-1 -25 -2.5 -4 #
+color-adesk-attrib $-1 -1 $-1 $-1 $687 0 #
+loop $-1 -1 $-1 $541 $941 $687 #
+cone-surface $-1 -1 $-1 25 0 -0.5 0 0 1 2.5 0 0 1 I I 0 1 2.5 forward I I I I #
+point $-1 -1 $-1 25 -2.5 -5 #
+color-adesk-attrib $-1 -1 $-1 $-1 $694 0 #
+ellipse-curve $-1 -1 $-1 25 0 -5 0 0 -1 2.5 0 0 1 I I #
+loop $-1 -1 $-1 $502 $942 $547 #
+coedge $-1 -1 $-1 $833 $833 $752 $874 forward $697 $-1 #
+coedge $-1 -1 $-1 $905 $699 $702 $839 forward $836 $-1 #
+coedge $-1 -1 $-1 $699 $905 $911 $943 forward $836 $-1 #
+loop $-1 -1 $-1 $-1 $834 $713 #
+color-adesk-attrib $-1 -1 $-1 $-1 $700 0 #
+vertex $-1 -1 $-1 $700 $944 #
+edge $945 -1 $-1 $705 -8.25 $908 -5.25 $834 $946 forward @7 unknown #
+face $947 -1 $-1 $708 $703 $3 $-1 $948 forward single #
+point $-1 -1 $-1 -7 15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $707 0 #
+straight-curve $-1 -1 $-1 -7 13.5 -91 0 -1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $708 0 #
+plane-surface $-1 -1 $-1 -6.5 13.5 -91 0 0 1 1 0 0 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $713 0 #
+face $949 -1 $-1 $950 $951 $3 $-1 $952 forward single #
+color-adesk-attrib $-1 -1 $-1 $-1 $716 0 #
+loop $-1 -1 $-1 $-1 $852 $716 #
+coedge $-1 -1 $-1 $719 $718 $875 $953 reversed $425 $-1 #
+edge $954 -1 $-1 $763 -1.5 $955 1.5 $718 $956 forward @7 unknown #
+coedge $-1 -1 $-1 $957 $882 $719 $853 forward $849 $-1 #
+edge $958 -1 $-1 $855 5.25 $959 8.25 $852 $960 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $720 0 #
+vertex $-1 -1 $-1 $720 $961 #
+straight-curve $-1 -1 $-1 3.5 -12 -73 0 0 -1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $724 0 #
+straight-curve $-1 -1 $-1 0 20 -4 1 0 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $726 0 #
+straight-curve $-1 -1 $-1 0 20 4 -1 0 0 I I #
+point $-1 -1 $-1 30 20 4 #
+point $-1 -1 $-1 30 20 -4 #
+color-adesk-attrib $-1 -1 $-1 $-1 $739 0 #
+straight-curve $-1 -1 $-1 30 0 -4 0 -1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $741 0 #
+straight-curve $-1 -1 $-1 30 0 4 0 1 0 I I #
+face $962 -1 $-1 $963 $964 $3 $-1 $965 reversed single #
+point $-1 -1 $-1 28 0 4 #
+color-adesk-attrib $-1 -1 $-1 $-1 $747 0 #
+face $966 -1 $-1 $867 $967 $3 $-1 $968 reversed single #
+loop $-1 -1 $-1 $595 $969 $747 #
+cone-surface $-1 -1 $-1 -25 0 3.5 0 0 1 3 0 0 1 I I 0 1 3 forward I I I I #
+coedge $-1 -1 $-1 $873 $873 $942 $970 reversed $750 $-1 #
+edge $971 -1 $-1 $972 0 $972 6.283185307179586232 $833 $973 forward @7 unknown #
+coedge $-1 -1 $-1 $753 $974 $850 $953 forward $240 $-1 #
+coedge $-1 -1 $-1 $761 $760 $753 $877 reversed $566 $-1 #
+edge $975 -1 $-1 $955 1.5 $879 2.5 $753 $976 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $755 0 #
+vertex $-1 -1 $-1 $877 $977 #
+straight-curve $-1 -1 $-1 4.5 -15 -71.75 0 0 -1 I I #
+coedge $-1 -1 $-1 $978 $759 $979 $980 forward $252 $-1 #
+coedge $-1 -1 $-1 $852 $981 $759 $883 forward $849 $-1 #
+edge $982 -1 $-1 $983 -6 $855 3.5 $882 $367 forward @7 unknown #
+point $-1 -1 $-1 3.5 -12 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $765 0 #
+straight-curve $-1 -1 $-1 4.5 -13.5 -91 0 1 0 I I #
+coedge $-1 -1 $-1 $984 $767 $985 $986 forward $240 $-1 #
+point $-1 -1 $-1 -25 -15 -4 #
+coedge $-1 -1 $-1 $774 $987 $988 $989 forward $252 $-1 #
+coedge $-1 -1 $-1 $810 $783 $774 $891 forward $518 $-1 #
+edge $990 -1 $-1 $893 -22 $991 -14 $890 $367 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $776 0 #
+vertex $-1 -1 $-1 $891 $992 #
+straight-curve $-1 -1 $-1 -22 -12 -52 0 0 -1 I I #
+point $-1 -1 $-1 -22 -12 -7 #
+coedge $-1 -1 $-1 $790 $780 $993 $994 forward $25 $-1 #
+coedge $-1 -1 $-1 $800 $799 $780 $898 reversed $801 $-1 #
+edge $995 -1 $-1 $900 -7.25 $996 -6.25 $780 $997 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $782 0 #
+vertex $-1 -1 $-1 $898 $998 #
+straight-curve $-1 -1 $-1 -14 12 -73 -0 0 1 I I #
+point $-1 -1 $-1 -14 12 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $786 0 #
+straight-curve $-1 -1 $-1 -22 0 -96 0 -1 0 I I #
+coedge $-1 -1 $-1 $835 $834 $790 $906 forward $836 $-1 #
+edge $999 -1 $-1 $908 7 $1000 13 $905 $124 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $792 0 #
+vertex $-1 -1 $-1 $906 $1001 #
+straight-curve $-1 -1 $-1 -7 12 -73 -0 0 1 I I #
+point $-1 -1 $-1 -7 12 -91 #
+coedge $-1 -1 $-1 $993 $797 $835 $943 reversed $913 $-1 #
+coedge $-1 -1 $-1 $797 $993 $799 $916 forward $913 $-1 #
+loop $-1 -1 $-1 $-1 $993 $1002 #
+color-adesk-attrib $-1 -1 $-1 $-1 $798 0 #
+straight-curve $-1 -1 $-1 -13 15 -71.75 0 0 1 I I #
+edge $1003 -1 $-1 $996 -1.5 $803 1.5 $912 $1004 forward @7 unknown #
+face $1005 -1 $-1 $806 $801 $3 $-1 $1006 reversed single #
+point $-1 -1 $-1 -13 15 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $805 0 #
+straight-curve $-1 -1 $-1 -14 13.5 -91 0 -1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $806 0 #
+face $1007 -1 $-1 $1008 $1009 $3 $-1 $1010 forward single #
+plane-surface $-1 -1 $-1 -14 13.5 -94 1 0 0 0 0 -1 forward_v I I I I #
+coedge $-1 -1 $-1 $988 $985 $810 $925 reversed $1009 $-1 #
+edge $1011 -1 $-1 $991 5.25 $927 8.25 $810 $1012 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $811 0 #
+vertex $-1 -1 $-1 $811 $1013 #
+coedge $-1 -1 $-1 $816 $816 $818 $933 reversed $929 $-1 #
+loop $-1 -1 $-1 $-1 $816 $938 #
+color-adesk-attrib $-1 -1 $-1 $-1 $817 0 #
+vertex $-1 -1 $-1 $823 $1014 #
+straight-curve $-1 -1 $-1 -25 0 -5 -0 1 0 I I #
+edge $1015 -1 $-1 $820 -1.570796326794896558 $931 1.570796326794896558 $928 $1016 forward @7 unknown #
+point $-1 -1 $-1 -25 2.5 -5 #
+color-adesk-attrib $-1 -1 $-1 $-1 $823 0 #
+straight-curve $-1 -1 $-1 -25 -2.5 -0.5 -0 -0 -1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $824 0 #
+face $1017 -1 $-1 $397 $929 $3 $-1 $1018 reversed single #
+loop $-1 -1 $-1 $679 $1019 $824 #
+cone-surface $-1 -1 $-1 -25 0 -0.5 0 0 1 2.5 0 0 1 I I 0 1 2.5 forward I I I I #
+coedge $-1 -1 $-1 $941 $941 $1020 $1021 forward $827 $-1 #
+coedge $-1 -1 $-1 $942 $942 $873 $970 forward $832 $-1 #
+edge $1022 -1 $-1 $1000 5.25 $838 8.25 $835 $1023 forward @7 unknown #
+point $-1 -1 $-1 -13 15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $839 0 #
+straight-curve $-1 -1 $-1 -7 6.75 -96 0 -1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $840 0 #
+plane-surface $-1 -1 $-1 -7 13.5 -94 1 0 0 0 0 -1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $847 0 #
+face $1024 -1 $-1 $1025 $1026 $3 $-1 $1027 reversed single #
+loop $-1 -1 $-1 $-1 $1028 $847 #
+plane-surface $-1 -1 $-1 -7 -13.5 -94 1 0 0 0 0 -1 forward_v I I I I #
+edge $1029 -1 $-1 $959 -24.25 $955 -19.25 $875 $1030 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $851 0 #
+vertex $-1 -1 $-1 $877 $1031 #
+straight-curve $-1 -1 $-1 3.5 -13.5 -91 0 -1 0 I I #
+coedge $-1 -1 $-1 $981 $852 $974 $1032 forward $849 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $853 0 #
+vertex $-1 -1 $-1 $1032 $1033 #
+straight-curve $-1 -1 $-1 3.5 -6.75 -96 0 -1 0 I I #
+point $-1 -1 $-1 3.5 -12 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $867 0 #
+face $1034 -1 $-1 $824 $1035 $3 $-1 $1036 reversed single #
+loop $-1 -1 $-1 $743 $1037 $867 #
+cone-surface $-1 -1 $-1 25 0 3.5 0 0 1 3 0 0 1 I I 0 1 3 forward I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $870 0 #
+loop $-1 -1 $-1 $1038 $1039 $870 #
+plane-surface $-1 -1 $-1 -25 0 3 0 0 -1 -1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $969 $969 $1040 $1041 forward $871 $-1 #
+edge $1042 -1 $-1 $1043 0 $1043 6.283185307179586232 $942 $1044 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $874 0 #
+vertex $-1 -1 $-1 $874 $1045 #
+ellipse-curve $-1 -1 $-1 -10 0 -7 0 0 1 3.5 0 0 1 I I #
+coedge $-1 -1 $-1 $875 $1046 $957 $1032 reversed $240 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $877 0 #
+straight-curve $-1 -1 $-1 2 -15 -91 1 0 0 I I #
+point $-1 -1 $-1 4.5 -15 -91 #
+coedge $-1 -1 $-1 $1047 $881 $1048 $1049 forward $252 $-1 #
+coedge $-1 -1 $-1 $1050 $1051 $881 $980 reversed $1052 $-1 #
+edge $1053 -1 $-1 $983 -23 $1054 -18 $881 $1055 forward @7 unknown #
+coedge $-1 -1 $-1 $882 $957 $1050 $1056 forward $849 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $883 0 #
+vertex $-1 -1 $-1 $883 $1057 #
+coedge $-1 -1 $-1 $1058 $887 $1059 $1060 forward $240 $-1 #
+coedge $-1 -1 $-1 $924 $1061 $887 $986 reversed $1009 $-1 #
+edge $1062 -1 $-1 $927 -24.25 $1063 -19.25 $887 $1064 forward @7 unknown #
+coedge $-1 -1 $-1 $889 $1065 $1066 $1067 forward $252 $-1 #
+coedge $-1 -1 $-1 $1061 $924 $889 $989 reversed $1009 $-1 #
+edge $1068 -1 $-1 $1069 18 $991 23 $889 $1070 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $891 0 #
+vertex $-1 -1 $-1 $925 $1071 #
+point $-1 -1 $-1 -22 -12 -96 #
+coedge $-1 -1 $-1 $912 $911 $896 $994 reversed $913 $-1 #
+edge $1072 -1 $-1 $996 18 $1000 23 $896 $1073 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $898 0 #
+vertex $-1 -1 $-1 $898 $1074 #
+straight-curve $-1 -1 $-1 -6.75 12 -91 1 0 -0 I I #
+point $-1 -1 $-1 -14 12 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $906 0 #
+vertex $-1 -1 $-1 $943 $1075 #
+point $-1 -1 $-1 -7 12 -96 #
+face $1076 -1 $-1 $917 $913 $3 $-1 $1077 forward single #
+color-adesk-attrib $-1 -1 $-1 $-1 $916 0 #
+straight-curve $-1 -1 $-1 -13 13.5 -91 0 1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $917 0 #
+plane-surface $-1 -1 $-1 -13.5 13.5 -91 0 0 1 1 0 0 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $922 0 #
+face $1078 -1 $-1 $1079 $1080 $3 $-1 $1081 reversed single #
+loop $-1 -1 $-1 $-1 $988 $922 #
+plane-surface $-1 -1 $-1 -14 -13.5 -94 1 0 0 0 0 -1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $925 0 #
+straight-curve $-1 -1 $-1 -14 -6.75 -96 0 -1 0 I I #
+point $-1 -1 $-1 -14 -15 -96 #
+point $-1 -1 $-1 -25 -2.5 -5 #
+color-adesk-attrib $-1 -1 $-1 $-1 $933 0 #
+ellipse-curve $-1 -1 $-1 -25 0 -5 0 0 -1 2.5 0 0 1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $938 0 #
+plane-surface $-1 -1 $-1 -25 0 -5 0 0 -1 -1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $1019 $1019 $1039 $1082 forward $939 $-1 #
+coedge $-1 -1 $-1 $1020 $1020 $941 $1021 reversed $1035 $-1 #
+edge $1083 -1 $-1 $1084 -3.141592653589793116 $1084 3.141592653589793116 $941 $1085 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $943 0 #
+straight-curve $-1 -1 $-1 -13 6.75 -96 0 1 -0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $950 0 #
+face $1086 -1 $-1 $1087 $1052 $3 $-1 $1088 forward single #
+loop $-1 -1 $-1 $-1 $1048 $950 #
+plane-surface $-1 -1 $-1 -6.5 -13.5 -91 0 0 1 1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $1089 $1090 $1047 $1091 reversed $951 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $953 0 #
+straight-curve $-1 -1 $-1 3.5 -15 -71.75 0 0 1 I I #
+point $-1 -1 $-1 3.5 -15 -91 #
+edge $1092 -1 $-1 $959 -3.5 $1093 6 $974 $360 forward @7 unknown #
+point $-1 -1 $-1 3.5 -15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $963 0 #
+loop $-1 -1 $-1 $1094 $1020 $963 #
+plane-surface $-1 -1 $-1 25 0 3 0 0 -1 -1 0 0 forward_v I I I I #
+coedge $-1 -1 $-1 $1037 $1037 $1095 $1096 forward $964 $-1 #
+loop $-1 -1 $-1 $-1 $1040 $870 #
+coedge $-1 -1 $-1 $1039 $1039 $1019 $1082 reversed $967 $-1 #
+coedge $-1 -1 $-1 $1040 $1040 $969 $1041 reversed $1038 $-1 #
+edge $1097 -1 $-1 $1098 0 $1098 6.283185307179586232 $1040 $1099 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $970 0 #
+vertex $-1 -1 $-1 $970 $1100 #
+ellipse-curve $-1 -1 $-1 10 0 -7 0 0 1 6 0 0 1 I I #
+point $-1 -1 $-1 -6.5 0 -7 #
+coedge $-1 -1 $-1 $974 $1101 $1102 $1103 forward $240 $-1 #
+coedge $-1 -1 $-1 $1104 $978 $1028 $1091 forward $252 $-1 #
+coedge $-1 -1 $-1 $1105 $1106 $978 $1049 reversed $1026 $-1 #
+edge $1107 -1 $-1 $1054 2.75 $1108 3.75 $978 $1109 forward @7 unknown #
+coedge $-1 -1 $-1 $1102 $979 $981 $1056 reversed $1052 $-1 #
+coedge $-1 -1 $-1 $979 $1102 $1105 $1110 forward $1052 $-1 #
+loop $-1 -1 $-1 $-1 $979 $1025 #
+color-adesk-attrib $-1 -1 $-1 $-1 $980 0 #
+vertex $-1 -1 $-1 $1049 $1111 #
+straight-curve $-1 -1 $-1 -6 -12 -73 0 -0 1 I I #
+edge $1112 -1 $-1 $1093 -8.25 $983 -5.25 $981 $1113 forward @7 unknown #
+point $-1 -1 $-1 -6 -12 -96 #
+coedge $-1 -1 $-1 $1114 $984 $1115 $1116 forward $240 $-1 #
+coedge $-1 -1 $-1 $1117 $1118 $984 $1060 reversed $1080 $-1 #
+edge $1119 -1 $-1 $1063 -7.25 $1120 -6.25 $984 $1121 forward @7 unknown #
+coedge $-1 -1 $-1 $985 $988 $1117 $1122 forward $1009 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $986 0 #
+vertex $-1 -1 $-1 $1060 $1123 #
+straight-curve $-1 -1 $-1 -14 -15 -71.75 0 0 1 I I #
+coedge $-1 -1 $-1 $987 $1104 $1124 $1125 forward $252 $-1 #
+coedge $-1 -1 $-1 $1118 $1117 $987 $1067 reversed $1080 $-1 #
+edge $1126 -1 $-1 $1127 6.25 $1069 7.25 $987 $1128 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $989 0 #
+vertex $-1 -1 $-1 $1067 $1129 #
+straight-curve $-1 -1 $-1 -14 -12 -73 0 0 -1 I I #
+point $-1 -1 $-1 -14 -12 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $994 0 #
+straight-curve $-1 -1 $-1 -13 12 -73 -0 -0 -1 I I #
+point $-1 -1 $-1 -13 12 -91 #
+point $-1 -1 $-1 -13 12 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1002 0 #
+plane-surface $-1 -1 $-1 -13 13.5 -94 -1 0 0 0 0 1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $1008 0 #
+face $1130 -1 $-1 $352 $1131 $3 $-1 $1132 forward single #
+loop $-1 -1 $-1 $-1 $1066 $1008 #
+plane-surface $-1 -1 $-1 -13.5 -13.5 -91 0 0 1 1 0 0 forward_v I I I I #
+edge $1133 -1 $-1 $1134 -3.141592653589793116 $1134 3.141592653589793116 $1019 $1135 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $1021 0 #
+vertex $-1 -1 $-1 $1021 $1136 #
+ellipse-curve $-1 -1 $-1 25 0 3 -0 -0 1 2.5 0 0 1 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $1025 0 #
+face $1137 -1 $-1 $1002 $1138 $3 $-1 $45 reversed single #
+plane-surface $-1 -1 $-1 -6 -13.5 -94 -1 0 0 0 0 1 forward_v I I I I #
+coedge $-1 -1 $-1 $1139 $1028 $1106 $1140 forward $951 $-1 #
+coedge $-1 -1 $-1 $1028 $1139 $1141 $1142 reversed $951 $-1 #
+edge $1143 -1 $-1 $1108 18 $1144 23 $1047 $1145 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $1032 0 #
+vertex $-1 -1 $-1 $1056 $1146 #
+loop $-1 -1 $-1 $-1 $1095 $963 #
+coedge $-1 -1 $-1 $1095 $1095 $1037 $1096 reversed $1094 $-1 #
+edge $1147 -1 $-1 $1148 0 $1148 6.283185307179586232 $1095 $1149 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $1041 0 #
+vertex $-1 -1 $-1 $1041 $1150 #
+ellipse-curve $-1 -1 $-1 -25 0 3 0 0 -1 3 0 0 1 I I #
+point $-1 -1 $-1 16 0 -7 #
+coedge $-1 -1 $-1 $1046 $1151 $1152 $1153 forward $240 $-1 #
+coedge $-1 -1 $-1 $1051 $1050 $1046 $1103 reversed $1052 $-1 #
+edge $1154 -1 $-1 $1155 19.25 $1093 24.25 $1046 $1156 forward @7 unknown #
+coedge $-1 -1 $-1 $1065 $1047 $1157 $1158 reversed $252 $-1 #
+coedge $-1 -1 $-1 $1152 $1048 $1051 $1110 reversed $1026 $-1 #
+coedge $-1 -1 $-1 $1048 $1152 $1089 $1140 reversed $1026 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1049 0 #
+vertex $-1 -1 $-1 $1049 $1159 #
+straight-curve $-1 -1 $-1 -3.25 -12 -91 -1 0 0 I I #
+edge $1160 -1 $-1 $1155 -1.5 $1054 1.5 $1051 $1161 forward @7 unknown #
+point $-1 -1 $-1 -6 -12 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1056 0 #
+straight-curve $-1 -1 $-1 -6 -6.75 -96 0 1 -0 I I #
+coedge $-1 -1 $-1 $1151 $1058 $1162 $1163 reversed $240 $-1 #
+coedge $-1 -1 $-1 $1164 $1165 $1058 $1116 reversed $1131 $-1 #
+edge $1166 -1 $-1 $1120 19.25 $1167 24.25 $1058 $1168 forward @7 unknown #
+coedge $-1 -1 $-1 $1066 $1059 $1061 $1122 reversed $1080 $-1 #
+coedge $-1 -1 $-1 $1059 $1066 $1164 $1169 reversed $1080 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1060 0 #
+vertex $-1 -1 $-1 $1060 $1170 #
+straight-curve $-1 -1 $-1 -6.75 -15 -91 1 0 0 I I #
+edge $1171 -1 $-1 $1069 -1.5 $1063 1.5 $1061 $1172 forward @7 unknown #
+point $-1 -1 $-1 -14 -15 -91 #
+coedge $-1 -1 $-1 $1165 $1164 $1065 $1125 reversed $1131 $-1 #
+edge $1173 -1 $-1 $1174 -23 $1127 -18 $1065 $1175 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $1067 0 #
+vertex $-1 -1 $-1 $1067 $1176 #
+straight-curve $-1 -1 $-1 -6.75 -12 -91 -1 0 0 I I #
+point $-1 -1 $-1 -14 -12 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1079 0 #
+loop $-1 -1 $-1 $-1 $1124 $1079 #
+plane-surface $-1 -1 $-1 -13 -13.5 -94 -1 0 0 0 0 1 forward_v I I I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $1082 0 #
+vertex $-1 -1 $-1 $1082 $1177 #
+ellipse-curve $-1 -1 $-1 -25 0 3 -0 -0 1 2.5 0 0 1 I I #
+point $-1 -1 $-1 22.5 -3.061616997868383141e-16 3 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1087 0 #
+loop $-1 -1 $-1 $-1 $1141 $1087 #
+coedge $-1 -1 $-1 $1090 $1089 $1151 $1178 reversed $951 $-1 #
+edge $1179 -1 $-1 $1108 -1.5 $1180 1.5 $1089 $1181 forward @7 unknown #
+coedge $-1 -1 $-1 $1162 $1157 $1090 $1142 forward $1138 $-1 #
+edge $1182 -1 $-1 $1144 5.25 $1183 8.25 $1141 $1184 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $1091 0 #
+vertex $-1 -1 $-1 $1091 $1185 #
+straight-curve $-1 -1 $-1 -7 -12 -73 0 0 -1 I I #
+point $-1 -1 $-1 -6 -15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1096 0 #
+vertex $-1 -1 $-1 $1096 $1186 #
+ellipse-curve $-1 -1 $-1 25 0 3 0 0 -1 3 0 0 1 I I #
+point $-1 -1 $-1 -22 0 3 #
+coedge $-1 -1 $-1 $1101 $1114 $1139 $1178 forward $240 $-1 #
+coedge $-1 -1 $-1 $1106 $1105 $1101 $1153 reversed $1026 $-1 #
+edge $1187 -1 $-1 $1180 -3.75 $1155 -2.75 $1101 $1188 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $1103 0 #
+vertex $-1 -1 $-1 $1153 $1189 #
+straight-curve $-1 -1 $-1 -6 -15 -71.75 0 0 -1 I I #
+coedge $-1 -1 $-1 $1141 $1190 $1104 $1158 forward $1138 $-1 #
+edge $1191 -1 $-1 $1174 -13 $1144 -7 $1157 $367 forward @7 unknown #
+point $-1 -1 $-1 -7 -12 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1110 0 #
+straight-curve $-1 -1 $-1 -6 -13.5 -91 0 1 0 I I #
+coedge $-1 -1 $-1 $1190 $1141 $1114 $1163 forward $1138 $-1 #
+edge $1192 -1 $-1 $1183 7 $1167 13 $1114 $360 forward @7 unknown #
+coedge $-1 -1 $-1 $1124 $1115 $1118 $1169 forward $1131 $-1 #
+coedge $-1 -1 $-1 $1115 $1124 $1190 $1193 reversed $1131 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1116 0 #
+vertex $-1 -1 $-1 $1116 $1194 #
+straight-curve $-1 -1 $-1 -13 -15 -71.75 0 0 -1 I I #
+edge $1195 -1 $-1 $1120 -1.5 $1127 1.5 $1164 $1196 forward @7 unknown #
+point $-1 -1 $-1 -13 -15 -91 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1122 0 #
+straight-curve $-1 -1 $-1 -14 -13.5 -91 0 -1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $1125 0 #
+vertex $-1 -1 $-1 $1158 $1197 #
+straight-curve $-1 -1 $-1 -13 -12 -73 0 -0 1 I I #
+point $-1 -1 $-1 -13 -12 -91 #
+point $-1 -1 $-1 -27.5 -3.061616997868383141e-16 3 #
+edge $1198 -1 $-1 $1183 -24.25 $1180 -19.25 $1151 $1199 forward @7 unknown #
+color-adesk-attrib $-1 -1 $-1 $-1 $1140 0 #
+vertex $-1 -1 $-1 $1153 $1200 #
+straight-curve $-1 -1 $-1 -7 -13.5 -91 0 -1 0 I I #
+color-adesk-attrib $-1 -1 $-1 $-1 $1142 0 #
+vertex $-1 -1 $-1 $1163 $1201 #
+straight-curve $-1 -1 $-1 -7 -6.75 -96 0 -1 0 I I #
+point $-1 -1 $-1 -7 -12 -96 #
+point $-1 -1 $-1 28 0 3 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1153 0 #
+straight-curve $-1 -1 $-1 -3.25 -15 -91 1 0 0 I I #
+point $-1 -1 $-1 -6 -15 -91 #
+coedge $-1 -1 $-1 $1157 $1162 $1165 $1193 forward $1138 $-1 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1158 0 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1163 0 #
+edge $1202 -1 $-1 $1167 -8.25 $1174 -5.25 $1190 $1203 forward @7 unknown #
+point $-1 -1 $-1 -13 -15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1169 0 #
+straight-curve $-1 -1 $-1 -13 -13.5 -91 0 1 0 I I #
+point $-1 -1 $-1 -13 -12 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1178 0 #
+straight-curve $-1 -1 $-1 -7 -15 -71.75 0 0 1 I I #
+point $-1 -1 $-1 -7 -15 -91 #
+point $-1 -1 $-1 -7 -15 -96 #
+color-adesk-attrib $-1 -1 $-1 $-1 $1193 0 #
+straight-curve $-1 -1 $-1 -13 -6.75 -96 0 1 -0 I I #

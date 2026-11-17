@@ -1,0 +1,154 @@
+/*
+ * sensor.c - C4F7N ��©�Ǵ��������� (GC5G1 NDIR, ���� UART �����ϱ�)
+ *
+ * �������:
+ *   1) ���� PC11(RX)/PC10(TX) Ϊ USART4 ����, 9600 8N1
+ *   2) ���������ж�, ���ֽڻ���, ��֡ͷʶ�𲢽���Ũ��
+ *   3) sensor_read_ppm() �������һ֡Ũ��
+ *
+ * ����: STM32 HAL, �����ú�ϵͳʱ��(72MHz)��
+ * ֡��ʽΪռλ����(AA 55 + 2�ֽ�С�� ppm), �Գ����ֲ�Ϊ׼, �� SENSOR_* �꼴�ɡ�
+ */
+#include "sensor.h"
+#include "stm32f1xx_hal.h"
+
+static UART_HandleTypeDef huart4;
+
+/* ���ջ��� + ״̬ */
+static uint8_t  frm[SENSOR_FRM_MAXLEN];
+static uint8_t  fidx = 0;
+static uint8_t  synced = 0;    /* �ѿ���֡ͷ0 */
+static float    g_ppm_now = 0.0f;
+static volatile uint8_t g_new = 0;
+static volatile uint32_t g_last_frame_ms = 0;   /* ���һ�γɹ�����֡�� tick(HAL_GetTick) */
+#define PROBE_ONLINE_TIMEOUT_MS  3000u          /* ������ʱ����֡ => ��Ϊ"δ����" */
+
+/* �궨�ӿ�: ������ֱ��Ũ��������У��  ppm_out = raw*cal_k/1000 + cal_b
+ *   cal_k: 0.001 ����б�� (Ĭ�� 1000 = 1.000, ��������)
+ *   cal_b: ppm ƫ�� (Ĭ�� 0, ����ƫ��) */
+static int32_t s_cal_k = 1000;
+static int32_t s_cal_b = 0;
+void sensor_set_cal(int32_t k, int32_t b) { s_cal_k = k; s_cal_b = b; }
+void sensor_get_cal(int32_t *k, int32_t *b) { if(k)*k=s_cal_k; if(b)*b=s_cal_b; }
+
+/* ����������һ֡Ũ�� (С�� + �ֽ���, ƫ�ƺ�)��
+ * ע��: ��ǰ֡��ʽ(AA 55 + 2�ֽ�С�� ppm)Ϊռλ����, ���� GC5G1 ʵ��/�ֲ�Ϊ׼
+ * (������ȷ�����嵥.md��S1/S4), ȷ�Ϻ�ͳһ�� SENSOR_* �꼴�ɡ� */
+static void parse_frame(void)
+{
+  if (fidx < SENSOR_PPM_OFFSET + SENSOR_PPM_BYTES) return;
+  uint16_t v = 0;
+  int i;
+  for (i = 0; i < SENSOR_PPM_BYTES; i++)
+    v |= (uint16_t)frm[SENSOR_PPM_OFFSET + i] << (8 * i);
+  g_ppm_now = (v > 1000) ? 1000.0f : (float)v;   /* �ص������� */
+  g_new = 1;
+  g_last_frame_ms = HAL_GetTick();
+}
+
+void sensor_init(void)
+{
+  GPIO_InitTypeDef gpio = {0};
+
+  __HAL_RCC_UART4_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+
+  /* PC11 = USART4_RX (���븡��), PC10 = USART4_TX (AF ����) */
+  gpio.Pin   = GPIO_PIN_10;
+  gpio.Mode  = GPIO_MODE_AF_PP;
+  gpio.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOC, &gpio);
+
+  gpio.Pin   = GPIO_PIN_11;
+  gpio.Mode  = GPIO_MODE_INPUT;
+  gpio.Pull  = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &gpio);
+
+  huart4.Instance = UART4;
+  huart4.Init.BaudRate = 9600;
+  huart4.Init.WordLength = UART_WORDLENGTH_8B;
+  huart4.Init.StopBits = UART_STOPBITS_1;
+  huart4.Init.Parity = UART_PARITY_NONE;
+  huart4.Init.Mode = UART_MODE_TX_RX;
+  huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart4.Init.OverSampling = UART_OVERSAMPLING_16;
+  HAL_UART_Init(&huart4);
+
+  /* ֱ��ʹ�� RXNE �ж� (������ HAL_UART_Receive_IT, ������ص���ͻ) */
+  __HAL_UART_ENABLE_IT(&huart4, UART_IT_RXNE);
+
+  /* ʹ�� UART4 �����ж� + NVIC */
+  HAL_NVIC_SetPriority(UART4_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(UART4_IRQn);
+}
+
+#ifdef SIM_MODE
+/* ---- SIM mode: fake concentration to drive UI/curve/history (compile SIM_MODE=1) ---- */
+#include <math.h>
+#define SIM_AMP 450.0f
+#define SIM_CTR 450.0f
+#define SIM_PERIOD_MS 30000u
+float sensor_read_ppm(void) {
+  uint32_t t = HAL_GetTick();
+  float w = 3.14159265f * 2.0f * ((float)(t % SIM_PERIOD_MS) / (float)SIM_PERIOD_MS);
+  float v = SIM_CTR + SIM_AMP * sinf(w);
+  if (v < 0.0f) v = 0.0f;
+  if (v > SENSOR_FS_PPM) v = SENSOR_FS_PPM;
+  return v;
+}
+float sensor_read_raw(void) { return sensor_read_ppm(); }
+int sensor_has_new(void) { return 1; }
+int sensor_online(void) { return 1; }
+#else
+float sensor_read_ppm(void) {
+  /* ����ֱ��Ũ�Ⱦ� MCU ������У�� (���ƫ�� + ����б��) */
+  float v = (float)(((int64_t)g_ppm_now * s_cal_k) / 1000 + s_cal_b);
+  if (v < 0.0f) v = 0.0f;
+  else if (v > SENSOR_FS_PPM) v = SENSOR_FS_PPM;
+  return v;
+}
+float sensor_read_raw(void) { return g_ppm_now; }   /* ԭʼŨ��, ������У�� */
+float sensor_read_voltage(void) { return 0.0f; }   /* ���ַ����޵�ѹ */
+int   sensor_has_new(void) { uint8_t n; __disable_irq(); n = g_new; g_new = 0; __enable_irq(); return n; }
+
+/* ̽ͷ�����ж�: ���һ����Ч֡���δ��ʱ => ���� */
+int sensor_online(void) {
+  uint32_t now, last;
+  __disable_irq(); last = g_last_frame_ms; __enable_irq();
+  if (last == 0) return 0;                       /* ��δ�յ���֡ */
+  now = HAL_GetTick();
+  return (now - last) < PROBE_ONLINE_TIMEOUT_MS;
+}
+#endif /* SIM_MODE */
+
+/* ���ֽ�ι��, ֡����״̬�� (HEAD0 HEAD1 [����...]) */
+static void feed_byte(uint8_t b)
+{
+  if (!synced) {
+    if (b == SENSOR_FRM_HEAD0) { synced = 1; fidx = 0; frm[fidx++] = b; }
+    return;
+  }
+  /* ��ͬ��: ���� HEAD1 */
+  if (fidx == 1) {
+    if (b == SENSOR_FRM_HEAD1) { frm[fidx++] = b; return; }
+    synced = 0;              /* ͷ��ƥ��, ����ͬ�� */
+    if (b == SENSOR_FRM_HEAD0) { synced = 1; fidx = 0; frm[fidx++] = b; }
+    return;
+  }
+  /* HEAD1 ֮��: ���� */
+  if (fidx < SENSOR_FRM_MAXLEN) frm[fidx++] = b;
+  if (fidx == SENSOR_PPM_OFFSET + SENSOR_PPM_BYTES) {
+    parse_frame();           /* ȡ��Ũ�ȼ�����(У���������ӳ�) */
+    synced = 0; fidx = 0;
+  }
+}
+
+/* UART4 �жϴ��� (it.c �� UART4_IRQHandler ����; �Ĵ�������ȡ, ������ HAL �ص�) */
+void sensor_uart4_irq_handler(void)
+{
+  if (__HAL_UART_GET_FLAG(&huart4, UART_FLAG_RXNE)) {
+    feed_byte((uint8_t)(huart4.Instance->DR & 0xFF));
+  }
+  /* �� DR ���� RXNE; RXNE �жϱ���ʹ��, �����ֶ��ع� */
+}

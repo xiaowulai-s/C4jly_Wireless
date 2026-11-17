@@ -1,0 +1,71 @@
+/*
+ * sensor.h - C4F7N ��©�Ǵ��������� (GC5G1 NDIR, ���� UART �����ϱ�)
+ *
+ * ������: GC5G1 ȫ���춡��(C4F7N) ģ��, NDIR ����ԭ��
+ * ���  : ���� UART (TTL) �����ϱ�Ũ��֡
+ * ����  : ������ TX �� STM32 PC11 (USART4_RX)
+ *         ������ RX �� STM32 PC10 (USART4_TX)
+ *         ������ GND �� STM32 GND (����)
+ *         ������ VCC �� 12/24VDC ��Դ (��������)
+ *
+ * ͨ��  : 9600 8N1, �����ϱ� (����ѯ��), ֡��ʽ�� SENSOR_* ��
+ *
+ * ע��  : ������Ԥ�� >=2min; ����(<=3����)�궨��
+ *         ֡��ʽϸ���Գ����ֲ�Ϊ׼, ��ɸġ�
+ */
+#ifndef SENSOR_H
+#define SENSOR_H
+
+/* SIM mode toggle (compile macro): uncomment next line to ENABLE fake data.
+ * Generates 0~900ppm sine concentration without a real sensor, for UI/curve/history test.
+ * Default off = read real UART4 sensor. */
+/* #define SIM_MODE 1 */
+
+#include <stdint.h>
+
+/* ---------- �û��ɵ����� (֡��ʽ, �Դ������ֲ�Ϊ׼) ---------- */
+#define SENSOR_FS_PPM        1000.0f /* ������Ũ�� ppm (��ʾ��) */
+#define SENSOR_SPAN_PPM      1000.0f /* ���̱궨����Ũ�� ppm (��¶�ڶ���ppm����ʱ��"���̱궨") */
+
+/* ���̱궨б��ǯ�Ʒ�Χ (ppm_out = raw*cal_k/1000 + cal_b) */
+#define SENSOR_CAL_K_MIN     100
+#define SENSOR_CAL_K_MAX     10000
+
+/* �����ϱ�֡: ֡ͷ�����ֽ� + Ũ��(С��, 2 �ֽ�) + У��(��ѡ)
+ * ����Ϊռλ����, ������Э��ȷ�Ϻ���� */
+#define SENSOR_FRM_MAXLEN    16      /* ��֡��󳤶� */
+#define SENSOR_FRM_HEAD0     0xAA    /* ֡ͷ 0 */
+#define SENSOR_FRM_HEAD1     0x55    /* ֡ͷ 1 */
+#define SENSOR_PPM_OFFSET    2       /* Ũ������ƫ��(֡ͷ��) */
+#define SENSOR_PPM_BYTES     2       /* Ũ���ֽ���(С��) */
+
+/* ---------- �ӿ� (ǩ������, �����ϲ�) ---------- */
+/* UART4 ��ʼ�� (9600 8N1) + ���������ж�; �� main ���ȵ��� */
+void    sensor_init(void);
+
+/* ��ȡ���һ֡��������Ũ�� raw(mcu���� k/b ����У��) (0~1000 ppm) */
+float   sensor_read_ppm(void);
+
+/* ��ȡ���һ֡ԭʼŨ�� (δ���궨У��, �����/���̱궨�ɼ�ԭʼ��) */
+float   sensor_read_raw(void);
+
+/* ��ȡԭʼ��ѹ: ���ַ����޴˸���, �����ӿڹ��궨�ص����ݷ��� 0 */
+float   sensor_read_voltage(void);
+
+/*
+ * �궨�ӿ�: ����ֱ��Ũ��ʱ�ɴ������ڲ�У׼, MCU ��ϵ�������뻻�㡣
+ * �����Ա��ϲ����; �����������ԭʼֵ�軻��, ���ڴ���չ��
+ */
+void    sensor_set_cal(int32_t k, int32_t b);
+void    sensor_get_cal(int32_t *k, int32_t *b);
+
+/* �����ݿ��ñ�־: �и��·��� 1, �������־ (���ϲ��б�) */
+int     sensor_has_new(void);
+
+/* ̽ͷ�����ж�: ���һ����Ч֡���δ��ʱ => 1 (����), ���� 0 (δ����) */
+int     sensor_online(void);
+
+/* UART4 �жϴ������ (�� stm32f1xx_it.c �� UART4_IRQHandler ����) */
+void    sensor_uart4_irq_handler(void);
+
+#endif /* SENSOR_H */
